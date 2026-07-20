@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo4j + Flask Tester</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f4f6f8;
+            color: #333;
+        }
+        h1 { color: #102a43; }
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input, button {
+            padding: 10px;
+            font-size: 14px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #004999; }
+        ul { background: #eef2f5; padding: 15px 30px; border-radius: 4px; }
+        .status { margin-top: 10px; font-weight: bold; color: #0066cc; }
+    </style>
+</head>
+<body>
+
+    <h1>Graph Network Tester</h1>
+
+    <!-- Card 1: Add Person -->
+    <div class="card">
+        <h3>1. Add a Person</h3>
+        <input type="text" id="personName" placeholder="Enter name (e.g., Alice)">
+        <button onclick="addPerson()">Add Person</button>
+        <div id="addStatus" class="status"></div>
+    </div>
+
+    <!-- Card 2: List People -->
+    <div class="card">
+        <h3>2. Fetch All People</h3>
+        <button onclick="loadPeople()">Load People List</button>
+        <ul id="peopleList"><li>Click load to see results...</li></ul>
+    </div>
+
+    <script>
+        // 1. Send GET request to Flask route /add-person/<name>
+        async function addPerson() {
+            const nameInput = document.getElementById('personName');
+            const name = nameInput.value.trim();
+            if (!name) return alert('Please enter a name');
+
+            const response = await fetch(`/add-person/${encodeURIComponent(name)}`);
+            const data = await response.json();
+            
+            document.getElementById('addStatus').innerText = data.message || "Created!";
+            nameInput.value = '';
+            loadPeople(); // Auto refresh list
+        }
+
+        // 2. Fetch array from Flask route /people
+        async function loadPeople() {
+            const response = await fetch('/people');
+            const data = await response.json();
+            
+            const listElement = document.getElementById('peopleList');
+            listElement.innerHTML = '';
+
+            if (data.people && data.people.length > 0) {
+                data.people.forEach(person => {
+                    const li = document.createElement('li');
+                    li.textContent = person;
+                    listElement.appendChild(li);
+                });
+            } else {
+                listElement.innerHTML = '<li>No people found in Neo4j.</li>';
+            }
+        }
+    </script>
+</body>
+</html>
