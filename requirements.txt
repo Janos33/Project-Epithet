@@ -1,2 +1,7 @@
-neo4j
 flask
+neo4j
+sentence-transformers
+numpy
+scikit-learn
+umap-learn
+hdbscan

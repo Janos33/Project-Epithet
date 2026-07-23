@@ -1,27 +1,27 @@
 # syntax=docker/dockerfile:1
 
-# Builds an image with the Python 3.12 image
-FROM python:3.12-alpine
+FROM python:3.11-slim
 
-# Sets the working directory to `/code`
 WORKDIR /code
 
-# Sets environment variables used by the `flask` command
-ENV FLASK_APP=app.py
+ENV FLASK_APP=init.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
-# Installs `gcc` and other dependencies
-RUN apk add --no-cache gcc musl-dev linux-headers
+# Installs gcc and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copies `requirements.txt`
+# STEP 1: Pre-install CPU-only PyTorch
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# STEP 2: Copy requirements
 COPY requirements.txt .
 
-# Installs the Python dependencies
-RUN pip install -r requirements.txt 
+# STEP 3: Install requirements using CPU index & no-cache
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt 
 
-# Copies the current directory `.` in the project to the workdir `.` in the image
 COPY . . 
 
-# Sets the default command for the container to `flask run --debug`
 EXPOSE 5000
-CMD ["flask", "run", "--debug"] 
+CMD ["flask", "run", "--debug"]
