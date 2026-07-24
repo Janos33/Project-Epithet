@@ -1,2 +1,2 @@
 Data sources:
-https://huggingface.co/collections/PoetryMTEB/poetry-datasets - authors, poems
+https://huggingface.co/datasets/DanFosing/public-domain-poetry - authors, poems

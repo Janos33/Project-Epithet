@@ -1,8 +1,9 @@
 import os
 from flask import Flask, jsonify, render_template, request
+from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
-import build_database
+load_dotenv()
 
 app = Flask(__name__)
 
