@@ -1,61 +1,232 @@
+"""
+Poetry Graph Ingestion Pipeline
+-------------------------------
+This script reads a JSON corpus of poetry, extracts emotional keywords using 
+NLP (spaCy) and SentenceTransformers, and ingests the data into a Neo4j graph database.
+
+Key Features:
+- Batched sentence embeddings for high-speed processing.
+- LRU caching to avoid redundant PyTorch calculations.
+- Dynamic Cypher labeling to tag keywords with specific emotional categories.
+"""
+
 import json
 import os
 import re
 
 from neo4j import GraphDatabase
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, util
 from init import driver
+from functools import lru_cache
 import spacy
+import torch
 
-# --- Settings ---
+# --- Settings & Configuration ---
+
+# Thresholds for breaking up or combining lines of poetry
 LINE_LENGTH_THRESHOLD = 15
 MAX_LINE_LENGTH = 50
 
-# Model Initializations
-# 1. Vector Embedder (~384 dimensions; fast and dense)
+# How many lines to accumulate in memory before sending to Neo4j
+BATCH_SIZE = 2000
+
+# Load vector embedding model (all-MiniLM is fast and lightweight)
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
-# 2. NLP Pipeline for Keyword Extraction
-# Make sure to run `python -m spacy download en_core_web_sm` first!
-nlp = spacy.load("en_core_web_sm")
+# Load spaCy NLP model. 
+# We disable 'parser' and 'ner' to massively speed up Part-Of-Speech tagging.
+nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+
+# Anchor words used to define the semantic "center" of each emotion
+EMOTIONAL_ANCHORS = {
+    "Radiance": [
+        "glow", "radiance", "joy", "laughter", "hope", "dawn", "promise", "blossom", "sunshine", "holy", "cupcake", "bunny"
+    ],
+    "Serenity": [
+        "stillness", "silence", "calm", "infinity", "cosmos", "eternal", "wonder", "breeze", "timeless", "awe"
+    ],
+    "Passion": [
+        "passion", "desire", "burning", "obsession", "tender", "heartbeat", "yearning", "memory", "touch"
+    ],
+    "Melancholy": [
+        "grief", "loneliness", "mourning", "regret", "guilt", "shame", "sorrow", "yesterday", "absence", "memory", "bittersweet"
+    ],
+    "Torment": [
+        "dread", "fear", "rage", "storm", "shatter", "pain", "broken", "desolation", "ruin", "unfair", "unjust", "poverty"
+    ],
+    "Delirium": [
+        "madness", "insanity", "frenzy", "chaos", "eerie", "haunting", "shadow", "disgust", "abyss", "mystery"
+    ],
+    "Transience": [
+        "time", "fading", "dust", "fleeting", "autumn", "mortality", "ephemeral", "passing", "vanishing", "wither", "earth", "physical", "plain", "ordinary", "fact"
+    ]
+}
+
+COLOR_MAP = {
+    "Neutral": "#A0A0A0",       # Gray
+    "Radiance": "#F4D35E",      # Bright Amber-Yellow (Joy, Hope, Light)
+    "Serenity": "#3B7A57",      # Sage Green (Peace, Transcendence)
+    "Passion": "#9B1D20",       # Crimson Red (Love, Yearning, Obsession)
+    "Melancholy": "#3D5A80",    # Steel Blue (Sorrow, Nostalgia, Guilt, Shame)
+    "Torment": "#D95D39",       # Burnt Orange (Tension, Despair, Fear)
+    "Delirium": "#5E3A6D",      # Deep Purple/Magenta (Madness, Dread, Disgust, Mystery)
+    "Transience": "#8B4513"      # Dark Brown (Time, Fading, Ephemeral)
+}
 
 # --- Helper Functions ---
 
+def batch_ingest_lines(line_batch: list[dict]):
+    """
+    Executes a single Cypher transaction to ingest a batch of lines, 
+    authors, and keywords into Neo4j.
+    """
+    print(f"Ingesting batch of {len(line_batch)} lines into Neo4j...")
+    
+    query = """
+    // Unwind the python list of dictionaries into individual rows
+    UNWIND $batch AS row
 
-def extract_keywords(text: str) -> list[str]:
-    """Extracts nouns and adjectives as 'oomph' keywords, normalized to lowercase lemmas."""
+    // 1. Create or match the Author
+    MERGE (w:Author {name: row.author})
+
+    // 2. Create the Line (using row.id to ensure uniqueness)
+    MERGE (l:Line {id: row.id})
+    ON CREATE SET 
+        l.text = row.line_text,
+        l.embedding = row.embedding
+    ON MATCH SET
+        l.text = row.line_text,
+        l.embedding = row.embedding
+
+    // Link Author to Line
+    MERGE (w)-[:AUTHORED]->(l)
+
+    // 3. Unwind parallel keyword arrays by index to process each word
+    WITH l, row
+    WHERE row.keywords IS NOT NULL AND size(row.keywords) > 0
+    UNWIND range(0, size(row.keywords) - 1) AS i
+
+    WITH l, 
+        row.keywords[i] AS kw_word, 
+        row.keyword_emotional_tone[i] AS kw_emotion, 
+        row.keyword_score[i] AS kw_score, 
+        row.keyword_color[i] AS kw_color
+
+    // 4. Merge the keyword node and attach base emotional properties
+    MERGE (k:PoemKeyword {word: kw_word})
+    ON CREATE SET 
+        k.emotion = kw_emotion,
+        k.score = kw_score,
+        k.color = kw_color
+    ON MATCH SET
+        k.emotion = kw_emotion,
+        k.score = kw_score,
+        k.color = kw_color
+
+    // 5. Connect the Line to its Keyword
+    MERGE (l)-[:HAS_KEYWORD]->(k)  
+    """
+    
+    session.run(query, batch=line_batch)
+
+
+# @lru_cache memoizes results. If a word (e.g., "shadow") appears 1,000 times,
+# it only passes through the PyTorch model once, saving immense time.
+@lru_cache(maxsize=None)
+def classify_emotional_tone(keyword: str, threshold: float = 0.5) -> dict:
+    """
+    Compares a single keyword against the predefined emotional centroids using cosine similarity.
+    Returns the emotion if it passes the threshold, otherwise returns Neutral.
+    """
+    keyword_vec = embedder.encode(keyword, convert_to_tensor=True)
+
+    best_score = 0.0
+    best_emotion = "Neutral"
+
+    # Check similarity against all base emotions
+    for emotion, category_vec in EMOTIONAL_EMBEDDINGS.items():
+        similarity = util.cos_sim(keyword_vec, category_vec).item()
+        if similarity > best_score:
+            best_score = similarity
+            best_emotion = emotion
+
+    # Return structured dict based on threshold
+    if best_score < threshold:
+        return {"emotion": "Neutral", "score": best_score, "color": COLOR_MAP["Neutral"]}
+    else:
+        return {
+            "word": keyword,
+            "emotion": best_emotion,
+            "score": round(best_score, 3),
+            "color": COLOR_MAP[best_emotion]
+        }
+
+
+def extract_keywords(text: str) -> dict:
+    """
+    Uses spaCy to parse text and extract meaningful nouns, verbs, and adjectives.
+    Filters out neutral words to keep the graph focused on emotional language.
+    """
     doc = nlp(text)
     keywords = []
+    
     for token in doc:
-        # Keep non-stopword Nouns and Adjectives
-        if token.pos_ in {"NOUN", "ADJ"} and not token.is_stop and token.is_alpha:
+        # Keep non-stopword Nouns, Verbs and Adjectives that are purely alphabetical
+        if token.pos_ in {"NOUN", "ADJ", "VERB"} and not token.is_stop and token.is_alpha:
             keywords.append(token.lemma_.lower())
-    return list(set(keywords))  # Deduplicate per line
+
+    keyword_classifications = []
+    for word_str in keywords:
+        classification = classify_emotional_tone(word_str)
+        # Drop neutral words from the final dataset to prevent noise
+        if classification["emotion"] != "Neutral":
+            keyword_classifications.append(classification)
+    
+    return keyword_classifications
+
+
+# --- Pre-compute Emotional Centroids ---
+
+EMOTIONAL_EMBEDDINGS = {}
+
+print("Pre-computing emotional anchors...")
+for emotion, words in EMOTIONAL_ANCHORS.items():
+    # Encode all words for an emotion, then average them into a single vector (centroid)
+    word_embeddings = embedder.encode(words, convert_to_tensor=True)
+    EMOTIONAL_EMBEDDINGS[emotion] = torch.mean(word_embeddings, dim=0)
 
 
 # --- Main Pipeline ---
 
-# Initialize Neo4j Driver
+current_batch = []
+
+print("Loading dataset...")
 with open("data/poems.json", "r", encoding="utf-8") as f:
     des_data = json.load(f)
 
+print("Starting Neo4j session...")
 with driver.session() as session:
+
     for poem in des_data:
         author = poem.get("Author", "Unknown")
         title = poem.get("Title", "Untitled")
         text = poem.get("text", "")
 
+        # Treat the title as the first line of the poem for analysis
         lines_to_process = title + "\n" + text
 
         current_combined = ""
         processed_lines = []
 
         # 1. Line Segmentation Logic
+        # Poetry lines can be awkward (too short or way too long). 
+        # This block normalizes them for better database readability.
         for raw_line in lines_to_process.splitlines():
             raw_line = raw_line.strip()
             if not raw_line:
                 continue
 
+            # Split excessively long lines by punctuation
             if len(raw_line) > MAX_LINE_LENGTH:
                 sub_lines = [
                     s.strip()
@@ -65,6 +236,7 @@ with driver.session() as session:
             else:
                 sub_lines = [raw_line]
 
+            # Combine very short fragments together
             for line in sub_lines:
                 if len(line) < LINE_LENGTH_THRESHOLD:
                     current_combined += (" " + line) if current_combined else line
@@ -75,59 +247,62 @@ with driver.session() as session:
                         current_combined = ""
                     processed_lines.append(line)
 
+        # Catch any remaining combined text at the end of the poem
         if current_combined:
             if len(current_combined) >= LINE_LENGTH_THRESHOLD:
                 processed_lines.append(current_combined)
             current_combined = ""
 
-        # 2. Neo4j Batch Node & Relationship Ingestion
+
+        # 2. Extract Data & Queue Batch
         for idx, line_text in enumerate(processed_lines):
-            # A. Generate Vector Embedding
-            embedding = embedder.encode(line_text).tolist()
+            
+            classified_keywords = extract_keywords(line_text)
 
-            # B. Extract Keywords via spaCy
-            keywords = extract_keywords(line_text)
+            if classified_keywords:
+                
+                # Generate a unique deterministic ID for the line
+                line_id = f"{author}_{title}_{idx}".lower().replace(" ", "_")[:100]
 
-            # C. Unique Line ID strategy (Poem Title + Line Index)
-            line_id = (
-                f"{author}_{title}_{idx}".lower().replace(" ", "_")[
-                    :100
-                ]  # Sanitize string ID
-            )
+                # Note: 'embedding' is left as None here and calculated in bulk later
+                current_batch.append({
+                    "author": author,
+                    "line_text": line_text,
+                    "keywords": [k["word"] for k in classified_keywords],
+                    "keyword_emotional_tone": [k["emotion"] for k in classified_keywords],
+                    "keyword_score": [k["score"] for k in classified_keywords],
+                    "keyword_color": [k["color"] for k in classified_keywords],
+                    "id": line_id,
+                    "embedding": None 
+                })
 
-            # D. Execute Cypher Transaction
-            query = """
-            // 1. Merge Writer
-            MERGE (w:Writer {name: $author})
+                # 3. Batch Vectorization & Ingestion
+                # When the batch fills up, run embeddings in parallel rather than a loop
+                if len(current_batch) >= BATCH_SIZE:
+                    
+                    line_texts = [item["line_text"] for item in current_batch]
+                    
+                    # Batch encoding utilizes CPU/GPU matrix multiplication for speed
+                    embeddings = embedder.encode(line_texts, batch_size=128, show_progress_bar=False)
 
-            // 2. Merge Line with text and embedding vector
-            MERGE (l:Line {id: $line_id})
-            ON CREATE SET 
-                l.text = $line_text,
-                l.embedding = $embedding
+                    # Map embeddings back to their dict records
+                    for item, emb in zip(current_batch, embeddings):
+                        item["embedding"] = emb.tolist()
 
-            // 3. Connect Writer to Line
-            MERGE (w)-[:AUTHORED]->(l)
+                    batch_ingest_lines(current_batch)
+                    current_batch = []
 
-            // 4. Merge Keywords and connect to Line
-            WITH l
-            UNWIND $keywords AS kw_text
-            MERGE (k:PoemKeyword {word: kw_text})
-            MERGE (l)-[:HAS_KEYWORD]->(k)
-            """
-
-            session.run(
-                query,
-                author=author,
-                line_id=line_id,
-                line_text=line_text,
-                embedding=embedding,
-                keywords=keywords,
-            )
-
-            print(
-                f"Ingested line [{idx + 1}/{len(processed_lines)}] for '{title}' with {len(keywords)} keywords."
-            )
+    # Final cleanup flush for any lines remaining after the last poem
+    if current_batch:
+        
+        line_texts = [item["line_text"] for item in current_batch]
+        embeddings = embedder.encode(line_texts, batch_size=128, show_progress_bar=False)
+        
+        for item, emb in zip(current_batch, embeddings):
+            item["embedding"] = emb.tolist()
+            
+        batch_ingest_lines(current_batch)
+        current_batch = []
 
 driver.close()
 print("Ingestion complete!")
