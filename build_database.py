@@ -262,7 +262,10 @@ with driver.session() as session:
             if classified_keywords:
                 
                 # Generate a unique deterministic ID for the line
-                line_id = f"{author}_{title}_{idx}".lower().replace(" ", "_")[:100]
+                
+                raw_str = f"{author}_{title}_{idx}".lower()
+                clean_str = re.sub(r'[^\w\s]', '', raw_str).replace(" ", "_")
+                line_id = re.sub(r'_+', '_', clean_str)
 
                 # Note: 'embedding' is left as None here and calculated in bulk later
                 current_batch.append({
