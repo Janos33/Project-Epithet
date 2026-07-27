@@ -7,14 +7,6 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Read connection info from environment variables
-NEO4J_URI = os.getenv("NEO4J_URI")
-NEO4J_USER = os.getenv("NEO4J_USER")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
-
-# Initialize the Neo4j driver
-driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-
 # Helper function to close driver on app shutdown
 @app.teardown_appcontext
 def close_driver(exception):

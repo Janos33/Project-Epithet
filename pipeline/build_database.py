@@ -3,20 +3,14 @@ Poetry Graph Ingestion Pipeline
 -------------------------------
 This script reads a JSON corpus of poetry, extracts emotional keywords using 
 NLP (spaCy) and SentenceTransformers, and ingests the data into a Neo4j graph database.
-
-Key Features:
-- Batched sentence embeddings for high-speed processing.
-- LRU caching to avoid redundant PyTorch calculations.
-- Dynamic Cypher labeling to tag keywords with specific emotional categories.
 """
 
 import json
 import os
 import re
-
-from neo4j import GraphDatabase
+from dotenv import load_dotenv
+from neo4j import GraphDatabase, Driver
 from sentence_transformers import SentenceTransformer, util
-from init import driver
 from functools import lru_cache
 import spacy
 import torch
@@ -30,14 +24,9 @@ MAX_LINE_LENGTH = 50
 # How many lines to accumulate in memory before sending to Neo4j
 BATCH_SIZE = 2000
 
-# Load vector embedding model (all-MiniLM is fast and lightweight)
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
-
-# Load spaCy NLP model. 
-# We disable 'parser' and 'ner' to massively speed up Part-Of-Speech tagging.
 nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
-# Anchor words used to define the semantic "center" of each emotion
 EMOTIONAL_ANCHORS = {
     "Radiance": [
         "glow", "radiance", "joy", "laughter", "hope", "dawn", "promise", "blossom", "sunshine", "holy", "cupcake", "bunny"
@@ -73,9 +62,21 @@ COLOR_MAP = {
     "Transience": "#8B4513"      # Dark Brown (Time, Fading, Ephemeral)
 }
 
-# --- Helper Functions ---
+EMOTIONAL_EMBEDDINGS = {}
 
-def batch_ingest_lines(line_batch: list[dict]):
+def get_neo4j_driver() -> Driver:
+    NEO4J_URI = os.getenv("NEO4J_URI")
+    NEO4J_USER = os.getenv("NEO4J_USER")
+    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+    return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+def process_embeddings():
+    for emotion, words in EMOTIONAL_ANCHORS.items():
+            # Encode all words for an emotion, then average them into a single vector (centroid)
+            word_embeddings = embedder.encode(words, convert_to_tensor=True)
+            EMOTIONAL_EMBEDDINGS[emotion] = torch.mean(word_embeddings, dim=0)
+
+def batch_ingest_lines(line_batch: list[dict], session):
     """
     Executes a single Cypher transaction to ingest a batch of lines, 
     authors, and keywords into Neo4j.
@@ -129,10 +130,7 @@ def batch_ingest_lines(line_batch: list[dict]):
     
     session.run(query, batch=line_batch)
 
-
-# @lru_cache memoizes results. If a word (e.g., "shadow") appears 1,000 times,
-# it only passes through the PyTorch model once, saving immense time.
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=10000)
 def classify_emotional_tone(keyword: str, threshold: float = 0.5) -> dict:
     """
     Compares a single keyword against the predefined emotional centroids using cosine similarity.
@@ -161,7 +159,6 @@ def classify_emotional_tone(keyword: str, threshold: float = 0.5) -> dict:
             "color": COLOR_MAP[best_emotion]
         }
 
-
 def extract_keywords(text: str) -> dict:
     """
     Uses spaCy to parse text and extract meaningful nouns, verbs, and adjectives.
@@ -184,128 +181,129 @@ def extract_keywords(text: str) -> dict:
     
     return keyword_classifications
 
+def ingest_data(driver: Driver):
 
-# --- Pre-compute Emotional Centroids ---
+    current_batch = []
 
-EMOTIONAL_EMBEDDINGS = {}
+    print("Loading dataset...")
+    with open("data/raw/poems.json", "r", encoding="utf-8") as f:
+        des_data = json.load(f)
 
-print("Pre-computing emotional anchors...")
-for emotion, words in EMOTIONAL_ANCHORS.items():
-    # Encode all words for an emotion, then average them into a single vector (centroid)
-    word_embeddings = embedder.encode(words, convert_to_tensor=True)
-    EMOTIONAL_EMBEDDINGS[emotion] = torch.mean(word_embeddings, dim=0)
+    print("Starting Neo4j session...")
+    with driver.session() as session:
 
+        for poem in des_data:
+            author = poem.get("Author", "Unknown")
+            title = poem.get("Title", "Untitled")
+            text = poem.get("text", "")
 
-# --- Main Pipeline ---
+            # Treat the title as the first line of the poem for analysis
+            lines_to_process = title + "\n" + text
 
-current_batch = []
-
-print("Loading dataset...")
-with open("data/poems.json", "r", encoding="utf-8") as f:
-    des_data = json.load(f)
-
-print("Starting Neo4j session...")
-with driver.session() as session:
-
-    for poem in des_data:
-        author = poem.get("Author", "Unknown")
-        title = poem.get("Title", "Untitled")
-        text = poem.get("text", "")
-
-        # Treat the title as the first line of the poem for analysis
-        lines_to_process = title + "\n" + text
-
-        current_combined = ""
-        processed_lines = []
-
-        # 1. Line Segmentation Logic
-        # Poetry lines can be awkward (too short or way too long). 
-        # This block normalizes them for better database readability.
-        for raw_line in lines_to_process.splitlines():
-            raw_line = raw_line.strip()
-            if not raw_line:
-                continue
-
-            # Split excessively long lines by punctuation
-            if len(raw_line) > MAX_LINE_LENGTH:
-                sub_lines = [
-                    s.strip()
-                    for s in re.split(r"(?<=[,;:]);?", raw_line)
-                    if s.strip()
-                ]
-            else:
-                sub_lines = [raw_line]
-
-            # Combine very short fragments together
-            for line in sub_lines:
-                if len(line) < LINE_LENGTH_THRESHOLD:
-                    current_combined += (" " + line) if current_combined else line
-                else:
-                    if current_combined:
-                        if len(current_combined) >= LINE_LENGTH_THRESHOLD:
-                            processed_lines.append(current_combined)
-                        current_combined = ""
-                    processed_lines.append(line)
-
-        # Catch any remaining combined text at the end of the poem
-        if current_combined:
-            if len(current_combined) >= LINE_LENGTH_THRESHOLD:
-                processed_lines.append(current_combined)
             current_combined = ""
+            processed_lines = []
+
+            # 1. Line Segmentation Logic
+            # Poetry lines can be awkward (too short or way too long). 
+            # This block normalizes them for better database readability.
+            for raw_line in lines_to_process.splitlines():
+                raw_line = raw_line.strip()
+                if not raw_line:
+                    continue
+
+                # Split excessively long lines by punctuation
+                if len(raw_line) > MAX_LINE_LENGTH:
+                    sub_lines = [
+                        s.strip()
+                        for s in re.split(r"(?<=[,;:]);?", raw_line)
+                        if s.strip()
+                    ]
+                else:
+                    sub_lines = [raw_line]
+
+                # Combine very short fragments together
+                for line in sub_lines:
+                    if len(line) < LINE_LENGTH_THRESHOLD:
+                        current_combined += (" " + line) if current_combined else line
+                    else:
+                        if current_combined:
+                            if len(current_combined) >= LINE_LENGTH_THRESHOLD:
+                                processed_lines.append(current_combined)
+                            current_combined = ""
+                        processed_lines.append(line)
+
+            # Catch any remaining combined text at the end of the poem
+            if current_combined:
+                if len(current_combined) >= LINE_LENGTH_THRESHOLD:
+                    processed_lines.append(current_combined)
+                current_combined = ""
 
 
-        # 2. Extract Data & Queue Batch
-        for idx, line_text in enumerate(processed_lines):
-            
-            classified_keywords = extract_keywords(line_text)
-
-            if classified_keywords:
+            # 2. Extract Data & Queue Batch
+            for idx, line_text in enumerate(processed_lines):
                 
-                # Generate a unique deterministic ID for the line
-                
-                raw_str = f"{author}_{title}_{idx}".lower()
-                clean_str = re.sub(r'[^\w\s]', '', raw_str).replace(" ", "_")
-                line_id = re.sub(r'_+', '_', clean_str)
+                classified_keywords = extract_keywords(line_text)
 
-                # Note: 'embedding' is left as None here and calculated in bulk later
-                current_batch.append({
-                    "author": author,
-                    "line_text": line_text,
-                    "keywords": [k["word"] for k in classified_keywords],
-                    "keyword_emotional_tone": [k["emotion"] for k in classified_keywords],
-                    "keyword_score": [k["score"] for k in classified_keywords],
-                    "keyword_color": [k["color"] for k in classified_keywords],
-                    "id": line_id,
-                    "embedding": None 
-                })
-
-                # 3. Batch Vectorization & Ingestion
-                # When the batch fills up, run embeddings in parallel rather than a loop
-                if len(current_batch) >= BATCH_SIZE:
+                if classified_keywords:
                     
-                    line_texts = [item["line_text"] for item in current_batch]
+                    # Generate a unique deterministic ID for the line
                     
-                    # Batch encoding utilizes CPU/GPU matrix multiplication for speed
-                    embeddings = embedder.encode(line_texts, batch_size=128, show_progress_bar=False)
+                    raw_str = f"{author}_{title}_{idx}".lower()
+                    clean_str = re.sub(r'[^\w\s]', '', raw_str).replace(" ", "_")
+                    line_id = re.sub(r'_+', '_', clean_str)
 
-                    # Map embeddings back to their dict records
-                    for item, emb in zip(current_batch, embeddings):
-                        item["embedding"] = emb.tolist()
+                    # Note: 'embedding' is left as None here and calculated in bulk later
+                    current_batch.append({
+                        "author": author,
+                        "line_text": line_text,
+                        "keywords": [k["word"] for k in classified_keywords],
+                        "keyword_emotional_tone": [k["emotion"] for k in classified_keywords],
+                        "keyword_score": [k["score"] for k in classified_keywords],
+                        "keyword_color": [k["color"] for k in classified_keywords],
+                        "id": line_id,
+                        "embedding": None 
+                    })
 
-                    batch_ingest_lines(current_batch)
-                    current_batch = []
+                    # 3. Batch Vectorization & Ingestion
+                    # When the batch fills up, run embeddings in parallel rather than a loop
+                    if len(current_batch) >= BATCH_SIZE:
+                        
+                        line_texts = [item["line_text"] for item in current_batch]
+                        
+                        # Batch encoding utilizes CPU/GPU matrix multiplication for speed
+                        embeddings = embedder.encode(line_texts, batch_size=128, show_progress_bar=False)
 
-    # Final cleanup flush for any lines remaining after the last poem
-    if current_batch:
-        
-        line_texts = [item["line_text"] for item in current_batch]
-        embeddings = embedder.encode(line_texts, batch_size=128, show_progress_bar=False)
-        
-        for item, emb in zip(current_batch, embeddings):
-            item["embedding"] = emb.tolist()
+                        # Map embeddings back to their dict records
+                        for item, emb in zip(current_batch, embeddings):
+                            item["embedding"] = emb.tolist()
+
+                        batch_ingest_lines(current_batch, session)
+                        current_batch = []
+
+        # Final cleanup flush for any lines remaining after the last poem
+        if current_batch:
             
-        batch_ingest_lines(current_batch)
-        current_batch = []
+            line_texts = [item["line_text"] for item in current_batch]
+            embeddings = embedder.encode(line_texts, batch_size=128, show_progress_bar=False)
+            
+            for item, emb in zip(current_batch, embeddings):
+                item["embedding"] = emb.tolist()
+                
+            batch_ingest_lines(current_batch, session)
+            current_batch = []
 
-driver.close()
-print("Ingestion complete!")
+def main():
+    load_dotenv()
+
+    print("Pre-computing emotional anchors...")
+    process_embeddings()
+
+    print("Connecting to driver")
+    with get_neo4j_driver() as driver:
+        print("Connected to the database")
+        ingest_data(driver)
+
+    print("Ingestion complete!")
+
+if __name__ == "__main__":
+    main()

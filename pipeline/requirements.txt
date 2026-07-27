@@ -1,7 +1,7 @@
-flask
 neo4j
 sentence-transformers
-numpy
-scikit-learn
+spacy
+python-dotenv
 umap-learn
 hdbscan
+torch
