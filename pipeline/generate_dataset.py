@@ -3,9 +3,19 @@ import os
 from neo4j import GraphDatabase, Driver
 from sklearn.decomposition import PCA
 from dotenv import load_dotenv
+import hdbscan
 import json
 import numpy
 import umap
+
+RAW_DATA_DIR = "data/raw"
+SEMI_PROCESSED_DIR = "data/semi-processed"
+PROCESSED_DIR = "data/processed"
+
+EXTRACTED_COORDS_PATH = os.path.join(SEMI_PROCESSED_DIR, "coords.npz")
+METADATA_PATH = os.path.join(PROCESSED_DIR, "metadata.json")
+CLUSTERED_DATA_PATH = os.path.join(PROCESSED_DIR, "clustered_data.npz")
+MEMMAP_PATH = os.path.join(SEMI_PROCESSED_DIR, "raw_embeddings.dat")
 
 def get_neo4j_driver() -> Driver:
     NEO4J_URI = os.getenv("NEO4J_URI")
@@ -20,9 +30,6 @@ def extract_data():
     print("Connecting to driver")
     with get_neo4j_driver() as driver:
 
-        output_dir = "data/processed"
-        os.makedirs(output_dir, exist_ok=True)
-
         batch_size = 50000
         skip = 0
         current_idx = 0
@@ -32,8 +39,7 @@ def extract_data():
         with driver.session() as session:
             total_count = session.execute_read(lambda tx: tx.run("MATCH (n:Line) RETURN count(n) AS cnt").single()["cnt"])
 
-        memmap_path = os.path.join(output_dir, "raw_embeddings.dat")
-        raw_embeddings = numpy.memmap(memmap_path, dtype='float32', mode='w+', shape=(total_count, embedding_dim))
+        raw_embeddings = numpy.memmap(MEMMAP_PATH, dtype='float32', mode='w+', shape=(total_count, embedding_dim))
 
 
         while True:
@@ -82,21 +88,66 @@ def extract_data():
     reducer = umap.UMAP(n_components=10, n_neighbors=15, min_dist=0.1, metric='cosine', init='random', verbose=True, random_state=42)
     umap_coords = reducer.fit_transform(pca_embeddings)
 
-    # Save final reduced coordinates and metadata
-    numpy.savez_compressed(os.path.join(output_dir, "coords.npz"), coords=umap_coords)
-    with open(os.path.join(output_dir, "metadata.json"), "w", encoding="utf-8") as f:
+    print(f"Saving reduced coordinates to {EXTRACTED_COORDS_PATH}")
+    print(f"Saving metadata to {METADATA_PATH}")
+    numpy.savez_compressed(EXTRACTED_COORDS_PATH, coords=umap_coords)
+    with open(METADATA_PATH, "w", encoding="utf-8") as f:
         json.dump(all_metadata, f, ensure_ascii=False, indent=2)
         
     # Clean up the temporary dat file
     del raw_embeddings
-    os.remove(memmap_path)
+    os.remove(MEMMAP_PATH)
     print("Dataset generation complete!")
 
-    print(f"Successfully processed and saved {len(all_metadata)} lines to {output_dir}/")
+    print(f"Successfully processed and saved {len(all_metadata)} lines/")
+
+def cluster_data():
+
+    print("Loading semi-processed coordinates...")
+    with numpy.load(EXTRACTED_COORDS_PATH) as data:
+
+        if "coords" in data:
+            coords = data["coords"]
+        else:
+            coords = data[data.files[0]]
+
+    print("Running HDBSCAN clustering on the dataset...")
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=15, min_samples=5, metric="euclidean")
+    cluster_labels = clusterer.fit_predict(coords)
+
+    print(f"Clustering complete. Found {len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)} valid clusters.")
+
+    print(f"Saving clustered data to {CLUSTERED_DATA_PATH}...")
+    numpy.savez_compressed(
+        CLUSTERED_DATA_PATH,
+        coords=coords,
+        cluster_labels=cluster_labels
+    )
+    print("Clustered data successfully saved.")
 
 def main():
+
+    os.makedirs(RAW_DATA_DIR, exist_ok=True)
+    os.makedirs(SEMI_PROCESSED_DIR, exist_ok=True)
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+    print("Data processing started")
+    
     load_dotenv()
-    extract_data()
+
+    if not os.path.isfile(EXTRACTED_COORDS_PATH) or not os.path.isfile(METADATA_PATH):
+        print("Start of data extraction")
+        extract_data()
+    else:
+        print("Data already has been extracted, skipping step")
+
+    if not os.path.isfile(CLUSTERED_DATA_PATH):
+        print("Start of data clustering")
+        cluster_data()
+    else:
+        print("Data already has been clustered, skipping step")
+
+    print("Data processing over")
 
 if __name__ == "__main__":
     main()

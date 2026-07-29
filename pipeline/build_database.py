@@ -24,6 +24,10 @@ MAX_LINE_LENGTH = 50
 # How many lines to accumulate in memory before sending to Neo4j
 BATCH_SIZE = 2000
 
+# Paths
+RAW_DATA_DIR = "data/raw"
+RAW_POEMS_PATH = os.path.join(RAW_DATA_DIR, "poems.json")
+
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
@@ -186,7 +190,7 @@ def ingest_data(driver: Driver):
     current_batch = []
 
     print("Loading dataset...")
-    with open("data/raw/poems.json", "r", encoding="utf-8") as f:
+    with open(RAW_POEMS_PATH, "r", encoding="utf-8") as f:
         des_data = json.load(f)
 
     print("Starting Neo4j session...")
