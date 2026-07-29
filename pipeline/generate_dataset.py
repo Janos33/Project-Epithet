@@ -7,6 +7,7 @@ import hdbscan
 import json
 import numpy
 import umap
+import gc
 
 RAW_DATA_DIR = "data/raw"
 SEMI_PROCESSED_DIR = "data/semi-processed"
@@ -49,8 +50,9 @@ def extract_data():
                     """
                     MATCH (n:Line)
                     WITH n
+                    ORDER BY elementId(n)
                     SKIP $skip LIMIT $batch_size
-                    MATCH (n)-[:HAS_KEYWORD]->(k)
+                    OPTIONAL MATCH (n)-[:HAS_KEYWORD]->(k)
                     RETURN n.text AS lineText, 
                         n.embedding AS lineEmbedding, 
                         collect({word: k.word, color: k.color, emotion: k.emotion, score: k.score}) AS keywords
@@ -80,9 +82,12 @@ def extract_data():
 
     raw_embeddings.flush()
 
+    # In case of keywordless lines, trim unused memory slots before PCA.
+    valid_embeddings = raw_embeddings[:current_idx]
+    
     print("Running PCA to reduce high-dimensional space...")
     pca = PCA(n_components=50, random_state=42)
-    pca_embeddings = pca.fit_transform(raw_embeddings)
+    pca_embeddings = pca.fit_transform(valid_embeddings)
 
     print("Running UMAP dimensionality reduction...")
     reducer = umap.UMAP(n_components=10, n_neighbors=15, min_dist=0.1, metric='cosine', init='random', verbose=True, random_state=42)
@@ -93,10 +98,18 @@ def extract_data():
     numpy.savez_compressed(EXTRACTED_COORDS_PATH, coords=umap_coords)
     with open(METADATA_PATH, "w", encoding="utf-8") as f:
         json.dump(all_metadata, f, ensure_ascii=False, indent=2)
-        
-    # Clean up the temporary dat file
+
+    # Clean up all memory-map references
+    if "valid_embeddings" in locals():
+        del valid_embeddings
     del raw_embeddings
-    os.remove(MEMMAP_PATH)
+
+    # Force garbage collection to release the file lock on Windows
+    gc.collect()
+
+    # Safely remove the temp file
+    if os.path.exists(MEMMAP_PATH):
+        os.remove(MEMMAP_PATH)
     print("Dataset generation complete!")
 
     print(f"Successfully processed and saved {len(all_metadata)} lines/")
