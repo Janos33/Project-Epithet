@@ -55,7 +55,7 @@ def extract_data():
                     OPTIONAL MATCH (n)-[:HAS_KEYWORD]->(k)
                     RETURN n.text AS lineText, 
                         n.embedding AS lineEmbedding, 
-                        collect({word: k.word, color: k.color, emotion: k.emotion, score: k.score}) AS keywords
+                        collect({word: k.word, color: k.color, emotion: k.emotion, score: k.score, frequency: k.relativeFrequency}) AS keywords
                         """,
                     skip=skip,
                     batch_size=batch_size,
