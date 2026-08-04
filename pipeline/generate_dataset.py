@@ -8,15 +8,7 @@ import json
 import numpy
 import umap
 import gc
-
-RAW_DATA_DIR = "data/raw"
-SEMI_PROCESSED_DIR = "data/semi-processed"
-PROCESSED_DIR = "data/processed"
-
-EXTRACTED_COORDS_PATH = os.path.join(SEMI_PROCESSED_DIR, "coords.npz")
-METADATA_PATH = os.path.join(PROCESSED_DIR, "metadata.json")
-CLUSTERED_DATA_PATH = os.path.join(PROCESSED_DIR, "clustered_data.npz")
-MEMMAP_PATH = os.path.join(SEMI_PROCESSED_DIR, "raw_embeddings.dat")
+from parameters import *
 
 def get_neo4j_driver() -> Driver:
     NEO4J_URI = os.getenv("NEO4J_URI")
@@ -31,16 +23,10 @@ def extract_data():
     print("Connecting to driver")
     with get_neo4j_driver() as driver:
 
-        batch_size = 50000
-        skip = 0
-        current_idx = 0
-
-        embedding_dim = 384
-
         with driver.session() as session:
             total_count = session.execute_read(lambda tx: tx.run("MATCH (n:Line) RETURN count(n) AS cnt").single()["cnt"])
 
-        raw_embeddings = numpy.memmap(MEMMAP_PATH, dtype='float32', mode='w+', shape=(total_count, embedding_dim))
+        raw_embeddings = numpy.memmap(MEMMAP_PATH, dtype='float32', mode='w+', shape=(total_count, EMBEDDING_DIM))
 
 
         while True:
@@ -58,7 +44,7 @@ def extract_data():
                         collect({word: k.word, color: k.color, emotion: k.emotion, score: k.score, frequency: k.relativeFrequency}) AS keywords
                         """,
                     skip=skip,
-                    batch_size=batch_size,
+                    batch_size=READ_BATCH_SIZE,
                 ).data()
             )
 
@@ -78,7 +64,7 @@ def extract_data():
                 f"Processed batch starting at index {skip} (Total in batch:"
                 f" {len(records)})"
             )
-            skip += batch_size
+            skip += READ_BATCH_SIZE
 
     raw_embeddings.flush()
 
@@ -86,11 +72,23 @@ def extract_data():
     valid_embeddings = raw_embeddings[:current_idx]
     
     print("Running PCA to reduce high-dimensional space...")
-    pca = PCA(n_components=50, random_state=42)
+    pca = PCA(
+        n_components=PCA_parameters.n_components,
+        random_state=PCA_parameters.random_state
+    )
     pca_embeddings = pca.fit_transform(valid_embeddings)
 
     print("Running UMAP dimensionality reduction...")
-    reducer = umap.UMAP(n_components=10, n_neighbors=15, min_dist=0.1, metric='cosine', init='random', verbose=True, random_state=42)
+    reducer = umap.UMAP(
+        n_components=UMAP_parameters.n_components,
+        n_neighbors=UMAP_parameters.n_neighbors,
+        min_dist=UMAP_parameters.min_dist,
+        metric=UMAP_parameters.metric,
+        init=UMAP_parameters.init,
+        verbose=UMAP_parameters.verbose,
+        random_state=UMAP_parameters.random_state
+    )
+
     umap_coords = reducer.fit_transform(pca_embeddings)
 
     print(f"Saving reduced coordinates to {EXTRACTED_COORDS_PATH}")
@@ -125,7 +123,12 @@ def cluster_data():
             coords = data[data.files[0]]
 
     print("Running HDBSCAN clustering on the dataset...")
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=15, min_samples=5, metric="euclidean")
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=HDBSCAN_parameters.min_cluster_size,
+        min_samples=HDBSCAN_parameters.min_samples,
+        metric=HDBSCAN_parameters.metric
+    )
+
     cluster_labels = clusterer.fit_predict(coords)
 
     print(f"Clustering complete. Found {len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)} valid clusters.")

@@ -14,59 +14,14 @@ from sentence_transformers import SentenceTransformer, util
 from functools import lru_cache
 import spacy
 import torch
+from parameters import *
 
-# --- Settings & Configuration ---
-
-# Thresholds for breaking up or combining lines of poetry
-LINE_LENGTH_THRESHOLD = 15
-MAX_LINE_LENGTH = 50
-
-# How many lines to accumulate in memory before sending to Neo4j
-BATCH_SIZE = 2000
-
-# Paths
-RAW_DATA_DIR = "data/raw"
-RAW_POEMS_PATH = os.path.join(RAW_DATA_DIR, "poems.json")
-
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
-nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
-
-EMOTIONAL_ANCHORS = {
-    "Radiance": [
-        "glow", "radiance", "joy", "laughter", "hope", "dawn", "promise", "blossom", "sunshine", "holy", "cupcake", "bunny"
-    ],
-    "Serenity": [
-        "stillness", "silence", "calm", "infinity", "cosmos", "eternal", "wonder", "breeze", "timeless", "awe"
-    ],
-    "Passion": [
-        "passion", "desire", "burning", "obsession", "tender", "heartbeat", "yearning", "memory", "touch"
-    ],
-    "Melancholy": [
-        "grief", "loneliness", "mourning", "regret", "guilt", "shame", "sorrow", "yesterday", "absence", "memory", "bittersweet"
-    ],
-    "Torment": [
-        "dread", "fear", "rage", "storm", "shatter", "pain", "broken", "desolation", "ruin", "unfair", "unjust", "poverty"
-    ],
-    "Delirium": [
-        "madness", "insanity", "frenzy", "chaos", "eerie", "haunting", "shadow", "disgust", "abyss", "mystery"
-    ],
-    "Transience": [
-        "time", "fading", "dust", "fleeting", "autumn", "mortality", "ephemeral", "passing", "vanishing", "wither", "earth", "physical", "plain", "ordinary", "fact"
-    ]
-}
-
-COLOR_MAP = {
-    "Neutral": "#A0A0A0",       # Gray
-    "Radiance": "#F4D35E",      # Bright Amber-Yellow (Joy, Hope, Light)
-    "Serenity": "#3B7A57",      # Sage Green (Peace, Transcendence)
-    "Passion": "#9B1D20",       # Crimson Red (Love, Yearning, Obsession)
-    "Melancholy": "#3D5A80",    # Steel Blue (Sorrow, Nostalgia, Guilt, Shame)
-    "Torment": "#D95D39",       # Burnt Orange (Tension, Despair, Fear)
-    "Delirium": "#5E3A6D",      # Deep Purple/Magenta (Madness, Dread, Disgust, Mystery)
-    "Transience": "#8B4513"      # Dark Brown (Time, Fading, Ephemeral)
-}
-
-EMOTIONAL_EMBEDDINGS = {}
+def load_models():
+    """Loads and returns all heavy NLP models."""
+    print("Loading NLP models into memory...")
+    embedder = SentenceTransformer(EMBEDDER_MODEL)
+    nlp = spacy.load(SPACY_MODEL, disable=["parser", "ner"])
+    return embedder, nlp
 
 def get_neo4j_driver() -> Driver:
     NEO4J_URI = os.getenv("NEO4J_URI")
@@ -74,11 +29,15 @@ def get_neo4j_driver() -> Driver:
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
     return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
-def process_embeddings():
+def process_embeddings(embedder: SentenceTransformer) -> dict:
+    EMOTIONAL_EMBEDDINGS = {}
+
     for emotion, words in EMOTIONAL_ANCHORS.items():
             # Encode all words for an emotion, then average them into a single vector (centroid)
             word_embeddings = embedder.encode(words, convert_to_tensor=True)
             EMOTIONAL_EMBEDDINGS[emotion] = torch.mean(word_embeddings, dim=0)
+
+    return EMOTIONAL_EMBEDDINGS
 
 def batch_ingest_lines(line_batch: list[dict], session):
     """
@@ -134,8 +93,8 @@ def batch_ingest_lines(line_batch: list[dict], session):
     
     session.run(query, batch=line_batch)
 
-@lru_cache(maxsize=10000)
-def classify_emotional_tone(keyword: str, threshold: float = 0.5) -> dict:
+@lru_cache(maxsize=LRU_CACHE_SIZE)
+def classify_emotional_tone(keyword: str, embedder: SentenceTransformer, EMOTIONAL_EMBEDDINGS: dict) -> dict:
     """
     Compares a single keyword against the predefined emotional centroids using cosine similarity.
     Returns the emotion if it passes the threshold, otherwise returns Neutral.
@@ -153,7 +112,7 @@ def classify_emotional_tone(keyword: str, threshold: float = 0.5) -> dict:
             best_emotion = emotion
 
     # Return structured dict based on threshold
-    if best_score < threshold:
+    if best_score < EMOTION_THRESHOLD:
         return {"emotion": "Neutral", "score": best_score, "color": COLOR_MAP["Neutral"]}
     else:
         return {
@@ -163,7 +122,7 @@ def classify_emotional_tone(keyword: str, threshold: float = 0.5) -> dict:
             "color": COLOR_MAP[best_emotion]
         }
 
-def extract_keywords(text: str) -> dict:
+def extract_keywords(text: str, embedder: SentenceTransformer, nlp: spacy.language.Language, EMOTIONAL_EMBEDDINGS: dict) -> dict:
     """
     Uses spaCy to parse text and extract meaningful nouns, verbs, and adjectives.
     Filters out neutral words to keep the graph focused on emotional language.
@@ -178,14 +137,14 @@ def extract_keywords(text: str) -> dict:
 
     keyword_classifications = []
     for word_str in keywords:
-        classification = classify_emotional_tone(word_str)
+        classification = classify_emotional_tone(word_str, embedder, EMOTIONAL_EMBEDDINGS)
         # Drop neutral words from the final dataset to prevent noise
         if classification["emotion"] != "Neutral":
             keyword_classifications.append(classification)
     
     return keyword_classifications
 
-def ingest_data(driver: Driver):
+def ingest_data(driver: Driver, embedder: SentenceTransformer, nlp: spacy.language.Language, EMOTIONAL_EMBEDDINGS: dict):
 
     current_batch = []
 
@@ -246,7 +205,7 @@ def ingest_data(driver: Driver):
             # 2. Extract Data & Queue Batch
             for idx, line_text in enumerate(processed_lines):
                 
-                classified_keywords = extract_keywords(line_text)
+                classified_keywords = extract_keywords(line_text, nlp, EMOTIONAL_EMBEDDINGS)
 
                 if classified_keywords:
                     
@@ -270,7 +229,7 @@ def ingest_data(driver: Driver):
 
                     # 3. Batch Vectorization & Ingestion
                     # When the batch fills up, run embeddings in parallel rather than a loop
-                    if len(current_batch) >= BATCH_SIZE:
+                    if len(current_batch) >= WRITE_BATCH_SIZE:
                         
                         line_texts = [item["line_text"] for item in current_batch]
                         
@@ -299,13 +258,17 @@ def ingest_data(driver: Driver):
 def main():
     load_dotenv()
 
+    embedder, nlp = load_models()
+
+    EMOTIONAL_EMBEDDINGS = process_embeddings(embedder)
+
     print("Pre-computing emotional anchors...")
-    process_embeddings()
+    process_embeddings(embedder)
 
     print("Connecting to driver")
     with get_neo4j_driver() as driver:
         print("Connected to the database")
-        ingest_data(driver)
+        ingest_data(driver, embedder, nlp, EMOTIONAL_EMBEDDINGS)
 
     print("Ingestion complete!")
 

@@ -8,22 +8,15 @@ from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 import umap
 import hdbscan
+from parameters import *
 
-# --- Settings ---
+#--- 1. Setup: Load Base Dataset ---
 
-poem = """
-"""
-
-
-# --- 1. Load Pre-existing Clustered Data & Metadata ---
-coords_path = "data/processed/clustered_data.npz"
-metadata_path = "data/processed/metadata.json"
-
-clustered_npz = numpy.load(coords_path)
+clustered_npz = numpy.load(COORDS_PATH)
 base_coords = clustered_npz["coords"]
 cluster_labels = clustered_npz["cluster_labels"]
 
-with open(metadata_path, "r", encoding="utf-8") as f:
+with open(METADATA_PATH, "r", encoding="utf-8") as f:
     metadata = json.load(f)
 
 # Bind base dataset to a DataFrame for easy querying
@@ -32,16 +25,20 @@ df["cluster"] = cluster_labels
 
 
 # --- 2. Process Input Poem ---
-poem_split = [line.strip() for line in poem.splitlines() if line.strip()]
+poem_split = [line.strip() for line in POEM_TEXT.splitlines() if line.strip()]
 
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 poem_embeddings = [embedder.encode(line) for line in poem_split]
 
-pca = PCA(n_components=10, random_state=42)
+pca = PCA(n_components=PCA_parameters.n_components, random_state=PCA_parameters.random_state)
 pca_embeddings = pca.fit_transform(poem_embeddings)
 
 reducer = umap.UMAP(
-    n_components=10, n_neighbors=15, min_dist=0.1, metric="cosine", random_state=42
+    n_components=UMAP_parameters.n_components,
+    n_neighbors=UMAP_parameters.n_neighbors,
+    min_dist=UMAP_parameters.min_dist,
+    metric=UMAP_parameters.metric,
+    random_state=UMAP_parameters.random_state
 )
 poem_umap_coords = reducer.fit_transform(pca_embeddings)
 
@@ -49,7 +46,7 @@ poem_umap_coords = reducer.fit_transform(pca_embeddings)
 # --- 3. Rule 1: Find Neighborhoods via HDBSCAN & Filter ---
 def get_valid_neighborhoods(coords, min_cluster_size=3):
     total_lines = len(coords)
-    target_threshold = 0.25 * total_lines
+    target_threshold = MINIMUM_LARGEST_NEIGHBORHOOD_SIZE * total_lines
 
     current_min_size = min_cluster_size
     clusterer = None
@@ -82,16 +79,16 @@ poem_df = pandas.DataFrame({"line": poem_split, "cluster": poem_labels})
 valid_clusters = [
     cluster_id
     for cluster_id, count in Counter(poem_labels).items()
-    if cluster_id != -1 and count >= (0.03 * len(poem_split))
+    if cluster_id != -1 and count >= (MINIMUM_NEIGHBORHOOD_SIZE * len(poem_split))
 ]
 
 
 # --- 4. Rule 2: Check Remaining Lines (<95% similar) up to target count ---
 num_neighborhoods = max(len(valid_clusters), 1)
-target_line_quota = int(1200 / num_neighborhoods)
+target_line_quota = int(TARGET_LINE_QUOTA_WHOLE / num_neighborhoods)
 
 # Use NearestNeighbors to check similarity against base dataset
-nn = NearestNeighbors(n_neighbors=100, metric="cosine").fit(base_coords)
+nn = NearestNeighbors(n_neighbors=NearestNeighbors_parameters.n_neighbors, metric=NearestNeighbors_parameters.metric).fit(base_coords)
 distances, indices = nn.kneighbors(poem_umap_coords)
 
 extracted_neighborhood_data = {}
@@ -124,7 +121,7 @@ for cluster_id in valid_clusters:
             similarity = 1.0 - dist
             
             # Check <95% similarity condition to avoid near-identical duplicates
-            if similarity < 0.95:
+            if similarity < MAX_LINE_SIMILARITY_THRESHOLD:
                 neighbor_item = df.iloc[n_idx].to_dict()
                 neighbor_item["line_similarity"] = float(similarity)
                 matching_text = neighbor_item["lineText"]
@@ -143,7 +140,7 @@ for cluster_id in valid_clusters:
 seen_words = set()
 
 num_neighborhoods = len(extracted_neighborhood_data)
-word_quota = int(24 / num_neighborhoods) if num_neighborhoods > 0 else 24
+word_quota = int(WORD_QUOTA_WHOLE / num_neighborhoods) if num_neighborhoods > 0 else WORD_QUOTA_WHOLE
 
 neighborhood_words = {}
 
@@ -159,7 +156,7 @@ for cluster_id, items in extracted_neighborhood_data.items():
             for kw in keywords:
                 kw_entry = dict(kw)
                 kw_entry["line_similarity"] = line_sim
-                kw_entry["final_score"] = min(0.65,kw_entry["score"]) * (1.0 + 0.1 * math.log(1 / (kw_entry["frequency"] + 1e-6))) * (1+line_sim ** 12)
+                kw_entry["final_score"] = min(FINAL_SCORE_MAX, kw_entry["score"]) * (1.0 + 0.1 * math.log(1 / (kw_entry["frequency"] + 1e-6))) * (1+line_sim ** 12)
                 all_keywords.append(kw_entry)
 
     # Sort keywords by composite score (score * line_similarity)
