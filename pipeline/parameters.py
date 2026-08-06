@@ -15,6 +15,7 @@ EXTRACTED_COORDS_PATH = SEMI_PROCESSED_DIR / "coords.npz"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
 CLUSTERED_DATA_PATH = PROCESSED_DIR / "clustered_data.npz"
 MEMMAP_PATH = SEMI_PROCESSED_DIR / "raw_embeddings.dat"
+MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"
 
 # --- Database Parameters ---
 LINE_LENGTH_THRESHOLD = 15
@@ -127,7 +128,6 @@ COLOR_MAP = {
 # --- Dataset Generation Parameters ---
 READ_BATCH_SIZE = 50000
 SKIP = 0
-CURRENT_IDX = 0
 EMBEDDING_DIM = 384
 
 
@@ -137,15 +137,15 @@ class PCA_parameters:
 
 
 class UMAP_parameters:
-    n_components = 10
-    n_neighbors = 15
-    min_dist = 0.1
+    n_components = 5
+    n_neighbors = 30
+    min_dist = 0.0
     metric = "cosine"
-    init = "random"
+    init = "spectral"
     verbose = True
 
 
 class HDBSCAN_parameters:
-    min_cluster_size = 15
-    min_samples = 5
+    min_cluster_size = 150
+    min_samples = 50
     metric = "euclidean"

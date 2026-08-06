@@ -27,7 +27,9 @@ def extract_data():
             total_count = session.execute_read(lambda tx: tx.run("MATCH (n:Line) RETURN count(n) AS cnt").single()["cnt"])
 
         raw_embeddings = numpy.memmap(MEMMAP_PATH, dtype='float32', mode='w+', shape=(total_count, EMBEDDING_DIM))
-
+        skip = SKIP
+        batch_size = READ_BATCH_SIZE
+        current_idx = 0
 
         while True:
             with driver.session() as session:
@@ -40,11 +42,12 @@ def extract_data():
                     SKIP $skip LIMIT $batch_size
                     OPTIONAL MATCH (n)-[:HAS_KEYWORD]->(k)
                     RETURN n.text AS lineText, 
-                        n.embedding AS lineEmbedding, 
-                        collect({word: k.word, color: k.color, emotion: k.emotion, score: k.score, frequency: k.relativeFrequency}) AS keywords
+                        n.embedding AS lineEmbedding,
+                        n.score AS score,
+                        collect({word: k.text, color: k.color, score: k.score, inverseFrequency: k.inverseFrequency}) AS keywords
                         """,
                     skip=skip,
-                    batch_size=READ_BATCH_SIZE,
+                    batch_size=batch_size,
                 ).data()
             )
 
@@ -55,7 +58,7 @@ def extract_data():
             for record in records:
 
                 raw_embeddings[current_idx] = record["lineEmbedding"]
-                lineData = {"lineText": record["lineText"], "keywords": record["keywords"]}
+                lineData = {"lineText": record["lineText"], "keywords": record["keywords"], "score": record["score"]}
                 all_metadata.append(lineData)
 
                 current_idx += 1
@@ -70,6 +73,13 @@ def extract_data():
 
     # In case of keywordless lines, trim unused memory slots before PCA.
     valid_embeddings = raw_embeddings[:current_idx]
+
+
+    print(f"Saving master embeddings ({valid_embeddings.shape}) to master_embeddings.npy...")
+    numpy.save(MASTER_EMBEDDINGS_PATH, valid_embeddings)
+
+    
+
     
     print("Running PCA to reduce high-dimensional space...")
     pca = PCA(
@@ -85,8 +95,7 @@ def extract_data():
         min_dist=UMAP_parameters.min_dist,
         metric=UMAP_parameters.metric,
         init=UMAP_parameters.init,
-        verbose=UMAP_parameters.verbose,
-        random_state=UMAP_parameters.random_state
+        verbose=UMAP_parameters.verbose
     )
 
     umap_coords = reducer.fit_transform(pca_embeddings)
@@ -98,8 +107,7 @@ def extract_data():
         json.dump(all_metadata, f, ensure_ascii=False, indent=2)
 
     # Clean up all memory-map references
-    if "valid_embeddings" in locals():
-        del valid_embeddings
+    del valid_embeddings
     del raw_embeddings
 
     # Force garbage collection to release the file lock on Windows
