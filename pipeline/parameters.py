@@ -22,7 +22,11 @@ MAX_LINE_LENGTH = 50
 
 # Can read from .env with a fallback default
 WRITE_BATCH_SIZE = 2000
-EMOTION_THRESHOLD = 0.5
+WORD_EMOTION_THRESHOLD = 0.51
+LINE_EMOTION_THRESHOLD = 0.25
+SCORE_SIMILARITY_THRESHOLD = 0.1
+
+ATTENUATION_FACTOR = 0.1
 
 EMBEDDER_MODEL = "all-MiniLM-L6-v2"
 SPACY_MODEL = "en_core_web_sm"
@@ -39,20 +43,18 @@ EMOTIONAL_ANCHORS = {
         "dawn",
         "promise",
         "blossom",
-        "sunshine",
-        "cupcake",
+        "sunshine"
     ],
     "Serenity": [
         "stillness",
         "silence",
         "calm",
         "infinity",
-        "cosmos",
         "eternal",
         "wonder",
         "breeze",
         "timeless",
-        "awe",
+        "awe"
     ],
     "Passion": [
         "passion",
@@ -61,7 +63,7 @@ EMOTIONAL_ANCHORS = {
         "obsession",
         "tender",
         "heartbeat",
-        "yearning",
+        "yearning"
     ],
     "Melancholy": [
         "grief",
@@ -71,10 +73,9 @@ EMOTIONAL_ANCHORS = {
         "guilt",
         "shame",
         "sorrow",
-        "yesterday",
         "absence",
         "memory",
-        "bittersweet",
+        "bittersweet"
     ],
     "Torment": [
         "dread",
@@ -85,9 +86,7 @@ EMOTIONAL_ANCHORS = {
         "pain",
         "broken",
         "desolation",
-        "ruin",
-        "unfair",
-        "unjust",
+        "ruin"
     ],
     "Delirium": [
         "madness",
@@ -97,9 +96,8 @@ EMOTIONAL_ANCHORS = {
         "eerie",
         "haunting",
         "shadow",
-        "disgust",
         "abyss",
-        "mystery",
+        "mystery"
     ],
     "Transience": [
         "time",
@@ -111,20 +109,18 @@ EMOTIONAL_ANCHORS = {
         "ephemeral",
         "passing",
         "vanishing",
-        "wither",
-        "earth",
-        "physical",
+        "wither"
     ],
 }
 
 COLOR_MAP = {
     "Neutral": "#A0A0A0",
     "Radiance": "#F4D35E",
-    "Serenity": "#3B7A57",
-    "Passion": "#9B1D20",
-    "Melancholy": "#3D5A80",
+    "Serenity": "#389261",
+    "Passion": "#641012",
+    "Melancholy": "#7BA1D1",
     "Torment": "#D95D39",
-    "Delirium": "#5E3A6D",
+    "Delirium": "#462E86",
     "Transience": "#8B4513",
 }
 
