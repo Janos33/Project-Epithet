@@ -7,6 +7,92 @@ BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 PROCESSED_DIR = BASE_DATA_DIR / "processed"
 COORDS_PATH = PROCESSED_DIR / "clustered_data.npz"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
+MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"
+
+#--- Emotional Embeddings ---
+
+ATTENUATION_FACTOR = 0.1
+LINE_EMOTION_THRESHOLD = 0.25
+
+EMOTIONAL_ANCHORS = {
+    "Radiance": [
+        "glow",
+        "radiance",
+        "joy",
+        "laughter",
+        "hope",
+        "dawn",
+        "promise",
+        "blossom",
+        "sunshine"
+    ],
+    "Serenity": [
+        "stillness",
+        "silence",
+        "calm",
+        "infinity",
+        "eternal",
+        "wonder",
+        "breeze",
+        "timeless",
+        "awe"
+    ],
+    "Passion": [
+        "passion",
+        "desire",
+        "burning",
+        "obsession",
+        "tender",
+        "heartbeat",
+        "yearning"
+    ],
+    "Melancholy": [
+        "grief",
+        "loneliness",
+        "mourning",
+        "regret",
+        "guilt",
+        "shame",
+        "sorrow",
+        "absence",
+        "memory",
+        "bittersweet"
+    ],
+    "Torment": [
+        "dread",
+        "fear",
+        "rage",
+        "storm",
+        "shatter",
+        "pain",
+        "broken",
+        "desolation",
+        "ruin"
+    ],
+    "Delirium": [
+        "madness",
+        "insanity",
+        "frenzy",
+        "chaos",
+        "eerie",
+        "haunting",
+        "shadow",
+        "abyss",
+        "mystery"
+    ],
+    "Transience": [
+        "time",
+        "fading",
+        "dust",
+        "fleeting",
+        "autumn",
+        "mortality",
+        "ephemeral",
+        "passing",
+        "vanishing",
+        "wither"
+    ],
+}
 
 #--- Poem ---
 
@@ -142,33 +228,12 @@ Shall be lifted—nevermore!
 
 #--- Step 2 - Model Parameters ---
 
-class PCA_parameters:
-    n_components = 10
-    random_state = 42
-
-class UMAP_parameters:
-    n_components = 10
-    n_neighbors = 15
-    min_dist = 0.1
-    metric = "cosine"
-    random_state = 42
+K_LINES_TO_GET = 15
 
 #--- Step 3 - Cluster building ---
 
-MINIMUM_LARGEST_NEIGHBORHOOD_SIZE = 0.25
-MINIMUM_NEIGHBORHOOD_SIZE = 0.03
+K_NEIGHBORHOODS_TO_KEEP = 15
 
 #--- Step 4 - Line selection ---
 
-TARGET_LINE_QUOTA_WHOLE = 1200
-
-class NearestNeighbors_parameters:
-    n_neighbors = 100
-    metric = "cosine"
-
-MAX_LINE_SIMILARITY_THRESHOLD = 0.95
-
-#--- Step 5 - Word selection ---
-
-WORD_QUOTA_WHOLE = 24
-FINAL_SCORE_MAX = 0.65
+TOP_LINES_TO_KEEP = 500

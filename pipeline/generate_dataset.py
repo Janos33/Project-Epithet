@@ -1,5 +1,4 @@
 import os
-
 from neo4j import GraphDatabase, Driver
 from sklearn.decomposition import PCA
 from dotenv import load_dotenv
