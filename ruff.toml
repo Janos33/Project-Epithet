@@ -1,0 +1,34 @@
+# Set the Python target version
+target-version = "py312"
+
+# Match Black's standard 88-character line length
+line-length = 88
+
+# Directories to ignore
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "dist",
+    "build",
+    "migrations",
+]
+
+[lint]
+# Enable Pyflakes (F), pycodestyle (E, W), isort (I), bugbear (B), and pyupgrade (UP)
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = []
+
+# Allow safe auto-fixing for all enabled rules
+fixable = ["ALL"]
+
+[format]
+# Enforce double quotes to match standard PEP 8 / Black style
+quote-style = "double"
+
+# Use 4 spaces for Python indentation
+indent-style = "space"
+
+# Automatically format import statements on save/run
+docstring-code-format = true

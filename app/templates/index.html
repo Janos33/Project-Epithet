@@ -1,31 +1,33 @@
-{% extends "base.html" %}
-
-{% block title %}Project Epithet{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Project Epithet{% endblock %} {% block content %}
 <form action="{{ url_for('results') }}" method="POST" class="app-form">
-    <div class="form-container">
-        <h1 class="heading-light">Project Epithet</h1>
-        <p class="subtitle">The words that define you</p>
+  <div class="form-container">
+    <h1 class="heading-light">Project Epithet</h1>
+    <p class="subtitle">The words that define you</p>
 
-        <div class="form-content">
-            <label for="author_name" class="visually-hidden">Author Name</label>
-            <input type="text" id="author_name" name="author_name" placeholder="Write the name of the author here" class="sync-input"> 
-            
-            <label for="poem_text" class="visually-hidden">Poem or Text Entry</label>
-            <textarea 
-                name="poem_text" 
-                id="poem_text" 
-                rows="12"
-                placeholder="Paste your poems here..." 
-                class="sync-input" 
-                autofocus
-                required></textarea>
+    <div class="form-content">
+      <label for="author_name" class="visually-hidden">Author Name</label>
+      <input
+        type="text"
+        id="author_name"
+        name="author_name"
+        placeholder="Write the name of the author here"
+        class="sync-input"
+      />
+      <label for="poem_text" class="visually-hidden">Poem or Text Entry</label>
+      <textarea
+        name="poem_text"
+        id="poem_text"
+        rows="12"
+        placeholder="Paste your poems here..."
+        class="sync-input"
+        autofocus
+        required
+      ></textarea>
 
-            <div class="form-submit-wrapper">
-                <button type="submit" class="primary-submit-btn">Find your words</button>
-            </div>
-        </div>
+      <div class="form-submit-wrapper">
+        <button type="submit" class="primary-submit-btn">Find your words</button>
+      </div>
     </div>
+  </div>
 </form>
 {% endblock %}

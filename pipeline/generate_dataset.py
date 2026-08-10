@@ -9,23 +9,29 @@ import umap
 import gc
 from parameters import *
 
+
 def get_neo4j_driver() -> Driver:
     NEO4J_URI = os.getenv("NEO4J_URI")
     NEO4J_USER = os.getenv("NEO4J_USER")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
     return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
-def extract_data():
 
+def extract_data():
     all_metadata = []
 
     print("Connecting to driver")
     with get_neo4j_driver() as driver:
-
         with driver.session() as session:
-            total_count = session.execute_read(lambda tx: tx.run("MATCH (n:Line) RETURN count(n) AS cnt").single()["cnt"])
+            total_count = session.execute_read(
+                lambda tx: tx.run("MATCH (n:Line) RETURN count(n) AS cnt").single()[
+                    "cnt"
+                ]
+            )
 
-        raw_embeddings = numpy.memmap(MEMMAP_PATH, dtype='float32', mode='w+', shape=(total_count, EMBEDDING_DIM))
+        raw_embeddings = numpy.memmap(
+            MEMMAP_PATH, dtype="float32", mode="w+", shape=(total_count, EMBEDDING_DIM)
+        )
         skip = SKIP
         batch_size = READ_BATCH_SIZE
         current_idx = 0
@@ -34,7 +40,7 @@ def extract_data():
             with driver.session() as session:
                 records = session.execute_read(
                     lambda tx: tx.run(
-                    """
+                        """
                     MATCH (n:Line)
                     WITH n
                     ORDER BY elementId(n)
@@ -45,19 +51,22 @@ def extract_data():
                         n.score AS score,
                         collect({word: k.text, color: k.color, score: k.score, inverseFrequency: k.inverseFrequency}) AS keywords
                         """,
-                    skip=skip,
-                    batch_size=batch_size,
-                ).data()
-            )
+                        skip=skip,
+                        batch_size=batch_size,
+                    ).data()
+                )
 
             # Exit the loop if no more records are returned
             if not records:
                 break
-        
-            for record in records:
 
+            for record in records:
                 raw_embeddings[current_idx] = record["lineEmbedding"]
-                lineData = {"lineText": record["lineText"], "keywords": record["keywords"], "score": record["score"]}
+                lineData = {
+                    "lineText": record["lineText"],
+                    "keywords": record["keywords"],
+                    "score": record["score"],
+                }
                 all_metadata.append(lineData)
 
                 current_idx += 1
@@ -73,17 +82,15 @@ def extract_data():
     # In case of keywordless lines, trim unused memory slots before PCA.
     valid_embeddings = raw_embeddings[:current_idx]
 
-
-    print(f"Saving master embeddings ({valid_embeddings.shape}) to master_embeddings.npy...")
+    print(
+        f"Saving master embeddings ({valid_embeddings.shape}) to master_embeddings.npy..."
+    )
     numpy.save(MASTER_EMBEDDINGS_PATH, valid_embeddings)
 
-    
-
-    
     print("Running PCA to reduce high-dimensional space...")
     pca = PCA(
         n_components=PCA_parameters.n_components,
-        random_state=PCA_parameters.random_state
+        random_state=PCA_parameters.random_state,
     )
     pca_embeddings = pca.fit_transform(valid_embeddings)
 
@@ -94,7 +101,7 @@ def extract_data():
         min_dist=UMAP_parameters.min_dist,
         metric=UMAP_parameters.metric,
         init=UMAP_parameters.init,
-        verbose=UMAP_parameters.verbose
+        verbose=UMAP_parameters.verbose,
     )
 
     umap_coords = reducer.fit_transform(pca_embeddings)
@@ -119,11 +126,10 @@ def extract_data():
 
     print(f"Successfully processed and saved {len(all_metadata)} lines/")
 
-def cluster_data():
 
+def cluster_data():
     print("Loading semi-processed coordinates...")
     with numpy.load(EXTRACTED_COORDS_PATH) as data:
-
         if "coords" in data:
             coords = data["coords"]
         else:
@@ -133,29 +139,29 @@ def cluster_data():
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=HDBSCAN_parameters.min_cluster_size,
         min_samples=HDBSCAN_parameters.min_samples,
-        metric=HDBSCAN_parameters.metric
+        metric=HDBSCAN_parameters.metric,
     )
 
     cluster_labels = clusterer.fit_predict(coords)
 
-    print(f"Clustering complete. Found {len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)} valid clusters.")
+    print(
+        f"Clustering complete. Found {len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)} valid clusters."
+    )
 
     print(f"Saving clustered data to {CLUSTERED_DATA_PATH}...")
     numpy.savez_compressed(
-        CLUSTERED_DATA_PATH,
-        coords=coords,
-        cluster_labels=cluster_labels
+        CLUSTERED_DATA_PATH, coords=coords, cluster_labels=cluster_labels
     )
     print("Clustered data successfully saved.")
 
-def main():
 
+def main():
     os.makedirs(RAW_DATA_DIR, exist_ok=True)
     os.makedirs(SEMI_PROCESSED_DIR, exist_ok=True)
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     print("Data processing started")
-    
+
     load_dotenv()
 
     if not os.path.isfile(EXTRACTED_COORDS_PATH) or not os.path.isfile(METADATA_PATH):
@@ -171,6 +177,7 @@ def main():
         print("Data already has been clustered, skipping step")
 
     print("Data processing over")
+
 
 if __name__ == "__main__":
     main()

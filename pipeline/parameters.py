@@ -44,7 +44,7 @@ EMOTIONAL_ANCHORS = {
         "dawn",
         "promise",
         "blossom",
-        "sunshine"
+        "sunshine",
     ],
     "Serenity": [
         "stillness",
@@ -55,7 +55,7 @@ EMOTIONAL_ANCHORS = {
         "wonder",
         "breeze",
         "timeless",
-        "awe"
+        "awe",
     ],
     "Passion": [
         "passion",
@@ -64,7 +64,7 @@ EMOTIONAL_ANCHORS = {
         "obsession",
         "tender",
         "heartbeat",
-        "yearning"
+        "yearning",
     ],
     "Melancholy": [
         "grief",
@@ -76,7 +76,7 @@ EMOTIONAL_ANCHORS = {
         "sorrow",
         "absence",
         "memory",
-        "bittersweet"
+        "bittersweet",
     ],
     "Torment": [
         "dread",
@@ -87,7 +87,7 @@ EMOTIONAL_ANCHORS = {
         "pain",
         "broken",
         "desolation",
-        "ruin"
+        "ruin",
     ],
     "Delirium": [
         "madness",
@@ -98,7 +98,7 @@ EMOTIONAL_ANCHORS = {
         "haunting",
         "shadow",
         "abyss",
-        "mystery"
+        "mystery",
     ],
     "Transience": [
         "time",
@@ -110,7 +110,7 @@ EMOTIONAL_ANCHORS = {
         "ephemeral",
         "passing",
         "vanishing",
-        "wither"
+        "wither",
     ],
 }
 

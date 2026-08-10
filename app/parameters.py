@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-#--- Paths ---
+# --- Paths ---
 
 BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 PROCESSED_DIR = BASE_DATA_DIR / "processed"
@@ -9,7 +9,7 @@ COORDS_PATH = PROCESSED_DIR / "clustered_data.npz"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
 MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"
 
-#--- Emotional Embeddings ---
+# --- Emotional Embeddings ---
 
 ATTENUATION_FACTOR = 0.1
 LINE_EMOTION_THRESHOLD = 0.25
@@ -24,7 +24,7 @@ EMOTIONAL_ANCHORS = {
         "dawn",
         "promise",
         "blossom",
-        "sunshine"
+        "sunshine",
     ],
     "Serenity": [
         "stillness",
@@ -35,7 +35,7 @@ EMOTIONAL_ANCHORS = {
         "wonder",
         "breeze",
         "timeless",
-        "awe"
+        "awe",
     ],
     "Passion": [
         "passion",
@@ -44,7 +44,7 @@ EMOTIONAL_ANCHORS = {
         "obsession",
         "tender",
         "heartbeat",
-        "yearning"
+        "yearning",
     ],
     "Melancholy": [
         "grief",
@@ -56,7 +56,7 @@ EMOTIONAL_ANCHORS = {
         "sorrow",
         "absence",
         "memory",
-        "bittersweet"
+        "bittersweet",
     ],
     "Torment": [
         "dread",
@@ -67,7 +67,7 @@ EMOTIONAL_ANCHORS = {
         "pain",
         "broken",
         "desolation",
-        "ruin"
+        "ruin",
     ],
     "Delirium": [
         "madness",
@@ -78,7 +78,7 @@ EMOTIONAL_ANCHORS = {
         "haunting",
         "shadow",
         "abyss",
-        "mystery"
+        "mystery",
     ],
     "Transience": [
         "time",
@@ -90,18 +90,18 @@ EMOTIONAL_ANCHORS = {
         "ephemeral",
         "passing",
         "vanishing",
-        "wither"
+        "wither",
     ],
 }
 
-#--- Step 1 - Model Parameters ---
+# --- Step 1 - Model Parameters ---
 
 K_LINES_TO_GET = 15
 
-#--- Step 2 - Cluster building ---
+# --- Step 2 - Cluster building ---
 
 K_NEIGHBORHOODS_TO_KEEP = 15
 
-#--- Step 3 - Line selection ---
+# --- Step 3 - Line selection ---
 
 TOP_LINES_TO_KEEP = 500
