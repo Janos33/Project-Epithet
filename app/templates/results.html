@@ -1,75 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Epithet</title>
-    <link rel="stylesheet" href="../static/style.css">
-</head>
-<body>
+{% extends "base.html" %}
 
-    <div>
-        <h1 style="text-align: center;">Project Epithet</h1>
-        
-        <form>
-            Your words are: <br>
+{% block title %}Project Epithet - Results{% endblock %}
 
-            <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;">
-                Afterimage <br>
-                Agonizing <br>
-                Ambient <br>
-                Analysis <br>
-                Anxiety <br>
-                Atone <br>
-                Aura
+{% block wrapper_class %}results-container{% endblock %}
+
+{% block header_nav %}
+    <nav>
+        <a href="{{ url_for('index') }}" class="window-icon-btn" aria-label="New Poem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+        </a>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <h1 class="heading-light">Project Epithet</h1>
+    
+    <p class="subtitle">
+        {% if author and author.strip() %}
+            The Epithet of {{ author }}
+        {% else %}
+            Extracted Words & Epithets
+        {% endif %}
+    </p>
+
+    <div class="keyword-grid">
+        {% for kw in keywords %}
+            <div class="keyword-card" style="--card-accent: {{ kw.color }};">
+                <div class="keyword-header">
+                    <span class="keyword-text">{{ kw.word }}</span>
+                </div>
+                <span class="keyword-score">Score: {{ "%.3f"|format(kw.line_score or 0) }}</span>
             </div>
-            <br>
-            Your work is the most similar to <b><i>Yuri</i>'s</b>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #f0f0f0; padding: 10px; border-radius: 5px;">
-                <tr>
-                    <td>
-                        Yuri
-                    </td>
-                    <td>
-                        80%
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        Sayori
-                    </td>
-                    <td>
-                        54%
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        Natsuki
-                    </td>
-                    <td>
-                        43%
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        Monika
-                    </td>
-                    <td>
-                        21%
-                    </td>
-                </tr>
-            </table>
-            <br>
-            Recommended authors: <br>
-            <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;">
-                Haruki Murakami <br>
-                Franz Kafka <br>
-                Virginia Woolf <br>
-                Sylvia Plath <br>
-                Albert Camus
-            </div>
-        </form>
+        {% else %}
+            <p class="empty-state">
+                No matching neighborhoods or keywords found for this poem.
+            </p>
+        {% endfor %}
     </div>
-
-</body>
-</html>
+{% endblock %}

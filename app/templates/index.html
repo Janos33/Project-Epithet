@@ -1,40 +1,31 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Epithet</title>
-    <link rel="stylesheet" href="../static/style.css">
-</head>
-<body>
+{% extends "base.html" %}
 
-    <div>
-        <h1 style="text-align: center;">Project Epithet</h1>
-        
-        <!-- CRITICAL: enctype is required to upload files -->
-        <form action="/results" method="POST" enctype="multipart/form-data">
+{% block title %}Project Epithet{% endblock %}
+
+{% block content %}
+<form action="{{ url_for('results') }}" method="POST" class="app-form">
+    <div class="form-container">
+        <h1 class="heading-light">Project Epithet</h1>
+        <p class="subtitle">The words that define you</p>
+
+        <div class="form-content">
+            <label for="author_name" class="visually-hidden">Author Name</label>
+            <input type="text" id="author_name" name="author_name" placeholder="Write the name of the author here" class="sync-input"> 
             
-            <div class="form-content">
-                <h2 style="text-align: center;">Write something into the text area or upload a file</h2> 
-                
-                <!-- New flex container to hold text and file side-by-side -->
-                <div class="input-group">
-                    <textarea name="user_text" id="user_text" rows="25" cols="75"></textarea>
-                    
-                    <!-- File Drop Zone -->
-                    <div class="file-drop-zone">
-                        <span>Pull file here<br>or click to browse</span>
-                        <input type="file" name="user_file" id="user_file">
-                    </div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 20px;">
-                    <button type="submit" id="generate_button">Find your words</button>
-                </div>
+            <label for="poem_text" class="visually-hidden">Poem or Text Entry</label>
+            <textarea 
+                name="poem_text" 
+                id="poem_text" 
+                rows="12"
+                placeholder="Paste your poems here..." 
+                class="sync-input" 
+                autofocus
+                required></textarea>
+
+            <div class="form-submit-wrapper">
+                <button type="submit" class="primary-submit-btn">Find your words</button>
             </div>
-            
-        </form>
+        </div>
     </div>
-
-</body>
-</html>
+</form>
+{% endblock %}

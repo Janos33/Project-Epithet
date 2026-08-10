@@ -177,7 +177,7 @@ def extract_words(poem_metadata, filtered_metadata, filtered_cluster_labels) -> 
         semantics_closeness = line_record.get("mean_similarity", 0.5)
         
         # --- COMPOSITE SCORE ---
-        final_score = (0.5 * emotional_closeness) + (0.3 * semantics_closeness) + (0.2 * emotional_strength)
+        final_score = (0.6 * emotional_closeness) + (0.4 * semantics_closeness)
         
         ranked_candidate_lines.append({
             "final_score": final_score,
@@ -206,6 +206,7 @@ def extract_words(poem_metadata, filtered_metadata, filtered_cluster_labels) -> 
                     "color": kw["color"],
                     "line_score": line_score
                 })
+
     return final_keywords
 
 def display_extracted_words(final_keywords):
@@ -213,21 +214,13 @@ def display_extracted_words(final_keywords):
     for keyword in final_keywords:
         print(f"word: {keyword["word"]} | color: {keyword["color"]} | line_score: {keyword["line_score"]}")
 
-def main():
+def find_keywords(poem_text, raw_embeddings, cluster_labels, metadata):
 
-    #--- 1. Setup: Load Base Dataset, Initialize Variables ---
-    # Raw_embeddings - unprocessed embeddings of lines
-    # Cluster_labels - the cluster each line belongs to, generated from reduced_embeddings but usable with either embeddings
-    # Dataset_df - metadata such as text and connected keywords, also usable with either embeddings
-    # The same index refers to the same line in all variables
-
-    raw_embeddings, cluster_labels, metadata = load_dataset()
-
-    # --- 2. Process Input Poem, Generate Neighborhoods ---
+    # --- 1. Process Input Poem, Generate Neighborhoods ---
     # Poem_clusters_set - the list of clusters that are closest to at least 1 line
     # Poem_metadata - poem lines, their nearest clusters, how close said clusters are, emotional scores
 
-    poem_clusters_set, poem_metadata = process_poem(POEM_TEXT,raw_embeddings, cluster_labels, K_LINES_TO_GET)
+    poem_clusters_set, poem_metadata = process_poem(poem_text,raw_embeddings, cluster_labels, K_LINES_TO_GET)
 
     if not poem_clusters_set:
         print("No neighborhoods found for this poem.")
@@ -235,18 +228,13 @@ def main():
     else:
         print(f"{len(poem_clusters_set)} neighborhoods found for this poem.")
 
-    # --- 3. Extract All Lines from K Best Neighborhoods ---
+    # --- 2. Extract All Lines from K Best Neighborhoods ---
     # Filtered versions of each variable that only contain the data of relevant neighborhoods
 
     filtered_metadata, filtered_cluster_labels = select_lines_from_neighborhoods(poem_metadata, metadata, cluster_labels, K_NEIGHBORHOODS_TO_KEEP)
 
-    # --- 4. Extract Words from Lines ---
+    # --- 3. Extract Words from Lines ---
 
     neighborhood_words = extract_words(poem_metadata, filtered_metadata, filtered_cluster_labels)
 
-    # --- 5. Display Extracted Words ---
-
-    display_extracted_words(neighborhood_words)
-  
-if __name__ == "__main__":
-    main()
+    return neighborhood_words
