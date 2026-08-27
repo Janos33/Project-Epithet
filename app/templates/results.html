@@ -18,12 +18,13 @@ wrapper_class %}results-container{% endblock %} {% block header_nav %}
   </a>
 </nav>
 {% endblock %} {% block content %}
-<h1 class="heading-light">Project Epithet</h1>
+<div class="header-block">
+  <h1 class="heading-light">Project Epithet</h1>
 
-<p class="subtitle">
-  {% if author and author.strip() %} The Epithet of {{ author }} {% else %} Extracted Words &
-  Epithets {% endif %}
-</p>
+  <p class="subtitle">
+    {% if author and author.strip() %} The Epithet of {{ author }} {% else %} An Epithet {% endif %}
+  </p>
+</div>
 
 <div class="keyword-grid">
   {% for kw in keywords %}

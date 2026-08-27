@@ -23,13 +23,16 @@ def results():
     # 1. Check textarea first
     poem_text = request.form.get("poem_text")
     author_name = request.form.get("author_name")
+    emotional_weight = int(request.form.get("closeness_mode", 60)) / 100
 
     # 2. Guard against completely empty submissions
     if not poem_text or not poem_text.strip():
         return render_template("results.html", keywords=[])
 
     # 3. Run pipeline
-    results = find_keywords(poem_text, RAW_EMBEDDINGS, CLUSTER_LABELS, METADATA)
+    results = find_keywords(
+        poem_text, emotional_weight, RAW_EMBEDDINGS, CLUSTER_LABELS, METADATA
+    )
 
     if results is None:
         results = []

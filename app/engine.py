@@ -144,7 +144,11 @@ def select_lines_from_neighborhoods(
 
 
 def extract_words(
-    poem_metadata, filtered_metadata, filtered_cluster_labels
+    poem_metadata,
+    filtered_metadata,
+    filtered_cluster_labels,
+    emotional_weight=0.6,
+    semantic_weight=0.4,
 ) -> dict[int, list[dict]]:
     # 1. Collect all score vectors into lists for each cluster
     cluster_score_lists = defaultdict(list)
@@ -179,18 +183,20 @@ def extract_words(
         line_scores_arr = np.array(line_scores)
         cluster_profile_arr = cluster_emotional_profiles[cluster_id]
 
-        # --- A. Emotional Closeness (Weight: 0.5) ---
+        # --- A. Emotional Closeness ---
         emo_distance = np.linalg.norm(line_scores_arr - cluster_profile_arr)
         emotional_closeness = 1.0 / (1.0 + emo_distance)
 
-        # --- B. Emotional Strength (Weight: 0.2) ---
+        # --- B. Emotional Strength ---
         emotional_strength = 1.0 / (1.0 + np.min(line_scores_arr))
 
-        # --- C. Semantics Closeness (Weight: 0.3) ---
-        semantics_closeness = line_record.get("mean_similarity", 0.5)
+        # --- C. Semantics Closeness ---
+        semantic_closeness = line_record.get("mean_similarity", 0.5)
 
         # --- COMPOSITE SCORE ---
-        final_score = (0.6 * emotional_closeness) + (0.4 * semantics_closeness)
+        final_score = (
+            emotional_weight * (emotional_closeness + 0.1 * emotional_strength)
+        ) + (semantic_weight * semantic_closeness)
 
         ranked_candidate_lines.append(
             {"final_score": final_score, "record": line_record}
@@ -227,7 +233,9 @@ def display_extracted_words(final_keywords):
         )
 
 
-def find_keywords(poem_text, raw_embeddings, cluster_labels, metadata):
+def find_keywords(
+    poem_text, emotional_weight, raw_embeddings, cluster_labels, metadata
+):
     # --- 1. Process Input Poem, Generate Neighborhoods ---
     # Poem_clusters_set - the list of clusters that are closest to at least 1 line
     # Poem_metadata - poem lines, their nearest clusters, how close said clusters are, emotional scores
@@ -252,7 +260,11 @@ def find_keywords(poem_text, raw_embeddings, cluster_labels, metadata):
     # --- 3. Extract Words from Lines ---
 
     neighborhood_words = extract_words(
-        poem_metadata, filtered_metadata, filtered_cluster_labels
+        poem_metadata,
+        filtered_metadata,
+        filtered_cluster_labels,
+        emotional_weight,
+        1 - emotional_weight,
     )
 
     return neighborhood_words

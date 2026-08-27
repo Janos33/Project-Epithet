@@ -1,9 +1,65 @@
-{% extends "base.html" %} {% block title %}Project Epithet{% endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}Project Epithet{% endblock %} {% block settings_button %}
+<button type="button" class="window-icon-btn settings-btn" aria-label="Options" id="settings-btn">
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path
+      d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+    ></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+</button>
+{% endblock %} {% block settings_modal %}
+<dialog id="settings-modal" class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button
+        type="button"
+        class="modal-close-btn"
+        id="close-settings-modal"
+        aria-label="Close dialog"
+      >
+        &times;
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="settings-form">
+        <div class="setting-group">
+          <label for="closeness-slider" class="setting-label">Algorithm Weighting</label>
+
+          <div class="slider-container">
+            <span class="slider-end-label" id="slider-end-label-semantic">Semantic</span>
+            <input
+              type="range"
+              id="closeness-slider"
+              name="closeness_mode"
+              min="0"
+              max="100"
+              value="40"
+              class="custom-slider"
+            />
+            <span class="slider-end-label" id="slider-end-label-emotional">Emotional</span>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>
+{% endblock %} {% block content %}
 <form action="{{ url_for('results') }}" method="POST" class="app-form">
   <div class="form-container">
-    <h1 class="heading-light">Project Epithet</h1>
-    <p class="subtitle">The words that define you</p>
-
+    <div class="header-block">
+      <h1 class="heading-light">Project Epithet</h1>
+      <p class="subtitle">The words that define you</p>
+    </div>
     <div class="form-content">
       <label for="author_name" class="visually-hidden">Author Name</label>
       <input
@@ -23,6 +79,16 @@
         autofocus
         required
       ></textarea>
+
+      <input
+        type="range"
+        id="form-closeness-slider"
+        name="closeness_mode"
+        min="0"
+        max="100"
+        value="50"
+        class="visually-hidden"
+      />
 
       <div class="form-submit-wrapper">
         <button type="submit" class="primary-submit-btn">Find your words</button>

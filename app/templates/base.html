@@ -12,7 +12,7 @@
         {% block header_nav %}{% endblock %}
 
         <div class="window-actions">
-          <button type="button" class="window-icon-btn" aria-label="Info">
+          <button type="button" class="window-icon-btn info-btn" aria-label="Info" id="info-btn">
             <svg
               width="16"
               height="16"
@@ -28,27 +28,111 @@
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
           </button>
-          <button type="button" class="window-icon-btn" aria-label="Options">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-              ></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </button>
+
+          {% block settings_button %} {% endblock %}
         </div>
       </header>
 
       {% block content %}{% endblock %}
     </main>
+
+    <!-- Info Modal -->
+    <dialog id="info-modal" class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>About Project Epithet</h2>
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="close-info-modal"
+            aria-label="Close dialog"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <p>
+            Discover the words that define your writing. <strong>Project Epithet</strong> is a
+            graph-based NLP engine that attempts to describe you based on your work, and also
+            compare you to others.
+          </p>
+          <p>
+            The poems are processed entirely within your browser using decentralized client-side
+            statistical processing. Because your text is converted into abstract numerical
+            embeddings locally on your own device, the raw poetry or prose you write is never sent
+            across the internet or stored on external servers, ensuring complete privacy and data
+            anonymity.
+          </p>
+          <p>
+            <a href="https://github.com/Janos33/Epithet">Github link</a>
+          </p>
+          <p>
+            <a href="https://huggingface.co/datasets/DanFosing/public-domain-poetry"
+              >Source of poems used for this project</a
+            >
+          </p>
+        </div>
+      </div>
+    </dialog>
+
+    {% block settings_modal %} {% endblock %}
   </body>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      function setupModal(openBtnSelector, modalId, closeBtnId) {
+        const openBtn = document.querySelector(openBtnSelector);
+        const modal = document.getElementById(modalId);
+        const closeBtn = document.getElementById(closeBtnId);
+
+        if (openBtn && modal) {
+          openBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            modal.showModal();
+          });
+
+          if (closeBtn) {
+            closeBtn.addEventListener("click", () => {
+              modal.close();
+            });
+          }
+
+          modal.addEventListener("click", (e) => {
+            const bounds = modal.getBoundingClientRect();
+            if (
+              e.clientX < bounds.left ||
+              e.clientX > bounds.right ||
+              e.clientY < bounds.top ||
+              e.clientY > bounds.bottom
+            ) {
+              modal.close();
+            }
+          });
+        }
+      }
+
+      setupModal(".info-btn", "info-modal", "close-info-modal");
+      setupModal(".settings-btn", "settings-modal", "close-settings-modal");
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const slider = document.getElementById("closeness-slider");
+      const formSlider = document.getElementById("form-closeness-slider");
+      const semanticText = document.getElementById("slider-end-label-semantic");
+      const emotionalText = document.getElementById("slider-end-label-emotional");
+
+      if (slider && semanticText && emotionalText) {
+        const updateSliderLabels = () => {
+          const val = parseInt(slider.value);
+          if (formSlider) formSlider.value = val;
+          semanticText.textContent = "Semantic (" + (100 - val) + "%)";
+          emotionalText.textContent = "Emotional (" + val + "%)";
+        };
+
+        updateSliderLabels();
+        slider.addEventListener("input", updateSliderLabels);
+      }
+    });
+  </script>
 </html>
