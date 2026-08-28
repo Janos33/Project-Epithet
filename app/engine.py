@@ -150,11 +150,13 @@ def extract_words(
     emotional_weight=0.6,
     semantic_weight=0.4,
 ) -> dict[int, list[dict]]:
-    # 1. Collect all score vectors into lists for each cluster
+    # 1. Collect score vectors and mean similarities for each cluster from the input poem
     cluster_score_lists = defaultdict(list)
+    cluster_similarity_lists = defaultdict(list)
 
     for record in poem_metadata:
         scores = record.get("scores")
+        mean_sim = record.get("mean_similarity", 0.5)
         if scores is None:
             continue
 
@@ -162,14 +164,18 @@ def extract_words(
             if cluster_id == -1:
                 continue
             cluster_score_lists[cluster_id].append(scores)
+            cluster_similarity_lists[cluster_id].append(mean_sim)
 
-    # 2. Compute the true mathematical mean for each cluster profile
+    # 2. Compute mathematical means for each cluster's profile and semantic baseline
     cluster_emotional_profiles = {}
     for cluster_id, score_list in cluster_score_lists.items():
         cluster_emotional_profiles[cluster_id] = np.mean(score_list, axis=0)
 
-    # 3. Rank lines based on their scores
+    cluster_semantic_profiles = {}
+    for cluster_id, sim_list in cluster_similarity_lists.items():
+        cluster_semantic_profiles[cluster_id] = np.mean(sim_list)
 
+    # 3. Rank lines based on their composite scores
     ranked_candidate_lines = []
 
     for i, line_record in enumerate(filtered_metadata):
@@ -190,8 +196,8 @@ def extract_words(
         # --- B. Emotional Strength ---
         emotional_strength = 1.0 / (1.0 + np.min(line_scores_arr))
 
-        # --- C. Semantics Closeness ---
-        semantic_closeness = line_record.get("mean_similarity", 0.5)
+        # --- C. Semantics Closeness (Derived from cluster neighborhood match) ---
+        semantic_closeness = cluster_semantic_profiles.get(cluster_id, 0.6)
 
         # --- COMPOSITE SCORE ---
         final_score = (
@@ -206,7 +212,6 @@ def extract_words(
     top_lines = ranked_candidate_lines[:TOP_LINES_TO_KEEP]
 
     # 4. Extract Keywords
-
     final_keywords = []
     seen_words = set()
 
