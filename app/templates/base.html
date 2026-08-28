@@ -81,6 +81,7 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // --- 1. MODAL SETUP ---
       function setupModal(openBtnSelector, modalId, closeBtnId) {
         const openBtn = document.querySelector(openBtnSelector);
         const modal = document.getElementById(modalId);
@@ -114,24 +115,56 @@
 
       setupModal(".info-btn", "info-modal", "close-info-modal");
       setupModal(".settings-btn", "settings-modal", "close-settings-modal");
-    });
 
-    document.addEventListener("DOMContentLoaded", () => {
+      // --- 2. SLIDER & STATE PERSISTENCE SETUP ---
       const slider = document.getElementById("closeness-slider");
       const formSlider = document.getElementById("form-closeness-slider");
       const semanticText = document.getElementById("slider-end-label-semantic");
       const emotionalText = document.getElementById("slider-end-label-emotional");
 
-      if (slider && semanticText && emotionalText) {
-        const updateSliderLabels = () => {
-          const val = parseInt(slider.value);
-          if (formSlider) formSlider.value = val;
-          semanticText.textContent = "Semantic (" + (100 - val) + "%)";
-          emotionalText.textContent = "Emotional (" + val + "%)";
-        };
+      const authorInput = document.getElementById("author_name");
+      const poemTextarea = document.getElementById("poem_text");
 
+      // Restore saved values from localStorage if they exist
+      if (localStorage.getItem("epithet_author")) {
+        if (authorInput) authorInput.value = localStorage.getItem("epithet_author");
+      }
+      if (localStorage.getItem("epithet_poem")) {
+        if (poemTextarea) poemTextarea.value = localStorage.getItem("epithet_poem");
+      }
+      if (localStorage.getItem("epithet_slider")) {
+        const savedVal = localStorage.getItem("epithet_slider");
+        if (slider) slider.value = savedVal;
+        if (formSlider) formSlider.value = savedVal;
+      }
+
+      const updateSliderLabels = () => {
+        if (!slider) return;
+        const val = parseInt(slider.value);
+        if (formSlider) formSlider.value = val;
+        if (semanticText) semanticText.textContent = "Semantic (" + (100 - val) + "%)";
+        if (emotionalText) emotionalText.textContent = "Emotional (" + val + "%)";
+
+        // Save slider state
+        localStorage.setItem("epithet_slider", val);
+      };
+
+      if (slider) {
         updateSliderLabels();
         slider.addEventListener("input", updateSliderLabels);
+      }
+
+      // Listen for changes to save author and poem text dynamically
+      if (authorInput) {
+        authorInput.addEventListener("input", () => {
+          localStorage.setItem("epithet_author", authorInput.value);
+        });
+      }
+
+      if (poemTextarea) {
+        poemTextarea.addEventListener("input", () => {
+          localStorage.setItem("epithet_poem", poemTextarea.value);
+        });
       }
     });
   </script>
