@@ -104,4 +104,4 @@ K_NEIGHBORHOODS_TO_KEEP = 15
 
 # --- Step 3 - Line selection ---
 
-TOP_LINES_TO_KEEP = 500
+TOP_WORDS_TO_KEEP = 10

@@ -32,7 +32,7 @@ wrapper_class %}results-container{% endblock %} {% block header_nav %}
     <div class="keyword-header">
       <span class="keyword-text">{{ kw.word }}</span>
     </div>
-    <span class="keyword-score">Score: {{ "%.3f"|format(kw.line_score or 0) }}</span>
+    <span class="keyword-score">Score: {{ "%.3f"|format(kw.score or 0) }}</span>
   </div>
   {% else %}
   <p class="empty-state">No matching neighborhoods or keywords found for this poem.</p>

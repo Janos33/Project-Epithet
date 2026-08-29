@@ -176,12 +176,13 @@ def extract_words(
         cluster_semantic_profiles[cluster_id] = np.mean(sim_list)
 
     # 3. Rank lines based on their composite scores
-    ranked_candidate_lines = []
+    best_keywords = {}
 
     for i, line_record in enumerate(filtered_metadata):
         cluster_id = filtered_cluster_labels[i]
 
-        line_scores = line_record.get("score") or line_record.get("scores")
+        line_scores = line_record.get("score")
+        keywords = line_record.get("keywords")
 
         if line_scores is None or cluster_id not in cluster_emotional_profiles:
             continue
@@ -189,44 +190,51 @@ def extract_words(
         line_scores_arr = np.array(line_scores)
         cluster_profile_arr = cluster_emotional_profiles[cluster_id]
 
+        # --- LINE SCORE CALCULATION  ---
+
         # --- A. Emotional Closeness ---
         emo_distance = np.linalg.norm(line_scores_arr - cluster_profile_arr)
-        emotional_closeness = 1.0 / (1.0 + emo_distance)
+        line_emotional_closeness = 1.0 / (1.0 + emo_distance)
 
         # --- B. Emotional Strength ---
-        emotional_strength = 1.0 / (1.0 + np.min(line_scores_arr))
+        line_emotional_strength = 1.0 / (1.0 + np.min(line_scores_arr))
 
         # --- C. Semantics Closeness (Derived from cluster neighborhood match) ---
-        semantic_closeness = cluster_semantic_profiles.get(cluster_id, 0.6)
+        line_semantic_closeness = cluster_semantic_profiles.get(cluster_id, 0.6)
 
-        # --- COMPOSITE SCORE ---
-        final_score = (
-            emotional_weight * (emotional_closeness + 0.1 * emotional_strength)
-        ) + (semantic_weight * semantic_closeness)
+        # --- WORD SCORE CALCULATION  ---
 
-        ranked_candidate_lines.append(
-            {"final_score": final_score, "record": line_record}
-        )
+        for keyword in keywords:
+            word_scores = keyword.get("score")
+            word_scores_arr = np.array(word_scores)
 
-    ranked_candidate_lines.sort(key=lambda x: x["final_score"], reverse=True)
-    top_lines = ranked_candidate_lines[:TOP_LINES_TO_KEEP]
+            # --- Emotional Closeness ---
+            word_emo_distance = np.linalg.norm(word_scores_arr - cluster_profile_arr)
+            word_emotional_closeness = 1.0 / (1.0 + word_emo_distance)
 
-    # 4. Extract Keywords
-    final_keywords = []
-    seen_words = set()
+            base_score = (
+                (emotional_weight * line_emotional_closeness)
+                + (semantic_weight * line_semantic_closeness)
+                + (emotional_weight * word_emotional_closeness)
+            )
+            final_score = base_score * (1.0 + (0.1 * line_emotional_strength))
 
-    for candidate in top_lines:
-        line_keywords = candidate["record"].get("keywords", [])
-        line_score = candidate["final_score"]
+            word_text = keyword["word"]
 
-        for kw in line_keywords:
-            word_value = kw["word"]
+            if (
+                word_text not in best_keywords
+                or final_score > best_keywords[word_text]["score"]
+            ):
+                best_keywords[word_text] = {
+                    "word": word_text,
+                    "color": keyword["color"],
+                    "score": final_score,
+                }
 
-            if word_value not in seen_words:
-                seen_words.add(word_value)
-                final_keywords.append(
-                    {"word": word_value, "color": kw["color"], "line_score": line_score}
-                )
+    ranked_keywords = list(best_keywords.values())
+
+    ranked_keywords.sort(key=lambda x: x["score"], reverse=True)
+    final_keywords = ranked_keywords[:TOP_WORDS_TO_KEEP]
 
     return final_keywords
 
