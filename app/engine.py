@@ -190,17 +190,12 @@ def extract_words(
         line_scores_arr = np.array(line_scores)
         cluster_profile_arr = cluster_emotional_profiles[cluster_id]
 
-        # --- LINE SCORE CALCULATION  ---
-
-        # --- A. Emotional Closeness ---
+        # --- Line Emotional Closeness ---
         emo_distance = np.linalg.norm(line_scores_arr - cluster_profile_arr)
         line_emotional_closeness = 1.0 / (1.0 + emo_distance)
 
-        # --- B. Emotional Strength ---
-        line_emotional_strength = 1.0 / (1.0 + np.min(line_scores_arr))
-
-        # --- C. Semantics Closeness (Derived from cluster neighborhood match) ---
-        line_semantic_closeness = cluster_semantic_profiles.get(cluster_id, 0.6)
+        # --- Cluster Semantics Closeness ---
+        cluster_semantic_closeness = cluster_semantic_profiles.get(cluster_id)
 
         # --- WORD SCORE CALCULATION  ---
 
@@ -208,16 +203,15 @@ def extract_words(
             word_scores = keyword.get("score")
             word_scores_arr = np.array(word_scores)
 
-            # --- Emotional Closeness ---
+            # --- Word Emotional Closeness ---
             word_emo_distance = np.linalg.norm(word_scores_arr - cluster_profile_arr)
             word_emotional_closeness = 1.0 / (1.0 + word_emo_distance)
 
-            base_score = (
-                (emotional_weight * line_emotional_closeness)
-                + (semantic_weight * line_semantic_closeness)
-                + (emotional_weight * word_emotional_closeness)
-            )
-            final_score = base_score * (1.0 + (0.1 * line_emotional_strength))
+            semantic_sim_score = semantic_weight * cluster_semantic_closeness
+            line_sim_score = emotional_weight * line_emotional_closeness
+            word_sim_score = emotional_weight * word_emotional_closeness
+
+            final_score = semantic_sim_score + line_sim_score * word_sim_score
 
             word_text = keyword["word"]
 

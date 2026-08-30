@@ -138,7 +138,7 @@ class PCA_parameters:
 
 class UMAP_parameters:
     n_components = 5
-    n_neighbors = 30
+    n_neighbors = 10
     min_dist = 0.0
     metric = "cosine"
     init = "spectral"
@@ -146,6 +146,6 @@ class UMAP_parameters:
 
 
 class HDBSCAN_parameters:
-    min_cluster_size = 150
-    min_samples = 50
+    min_cluster_size = 20
+    min_samples = 5
     metric = "euclidean"
