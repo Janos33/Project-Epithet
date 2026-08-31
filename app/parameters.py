@@ -93,15 +93,3 @@ EMOTIONAL_ANCHORS = {
         "wither",
     ],
 }
-
-# --- Step 1 - Model Parameters ---
-
-K_LINES_TO_GET = 15
-
-# --- Step 2 - Cluster building ---
-
-K_NEIGHBORHOODS_TO_KEEP = 15
-
-# --- Step 3 - Line selection ---
-
-TOP_WORDS_TO_KEEP = 10

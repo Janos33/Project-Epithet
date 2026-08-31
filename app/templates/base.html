@@ -81,7 +81,7 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // --- 1. MODAL SETUP ---
+      // --- MODAL SETUP ---
       function setupModal(openBtnSelector, modalId, closeBtnId) {
         const openBtn = document.querySelector(openBtnSelector);
         const modal = document.getElementById(modalId);
@@ -116,56 +116,100 @@
       setupModal(".info-btn", "info-modal", "close-info-modal");
       setupModal(".settings-btn", "settings-modal", "close-settings-modal");
 
-      // --- 2. SLIDER & STATE PERSISTENCE SETUP ---
-      const slider = document.getElementById("closeness-slider");
-      const formSlider = document.getElementById("form-closeness-slider");
-      const semanticText = document.getElementById("slider-end-label-semantic");
-      const emotionalText = document.getElementById("slider-end-label-emotional");
+      // --- TEXT INPUT PERSISTENCE ---
+      const textInputs = [
+        { id: "author_name", storageKey: "epithet_author" },
+        { id: "poem_text", storageKey: "epithet_poem" }
+      ];
 
-      const authorInput = document.getElementById("author_name");
-      const poemTextarea = document.getElementById("poem_text");
+      textInputs.forEach((config) => {
+        const inputEl = document.getElementById(config.id);
+        if (!inputEl) return;
 
-      // Restore saved values from localStorage if they exist
-      if (localStorage.getItem("epithet_author")) {
-        if (authorInput) authorInput.value = localStorage.getItem("epithet_author");
-      }
-      if (localStorage.getItem("epithet_poem")) {
-        if (poemTextarea) poemTextarea.value = localStorage.getItem("epithet_poem");
-      }
-      if (localStorage.getItem("epithet_slider")) {
-        const savedVal = localStorage.getItem("epithet_slider");
-        if (slider) slider.value = savedVal;
-        if (formSlider) formSlider.value = savedVal;
-      }
+        // Restore value
+        const savedValue = localStorage.getItem(config.storageKey);
+        if (savedValue !== null) {
+          inputEl.value = savedValue;
+        }
 
-      const updateSliderLabels = () => {
-        if (!slider) return;
-        const val = parseInt(slider.value);
-        if (formSlider) formSlider.value = val;
-        if (semanticText) semanticText.textContent = "Semantic (" + (100 - val) + "%)";
-        if (emotionalText) emotionalText.textContent = "Emotional (" + val + "%)";
-
-        // Save slider state
-        localStorage.setItem("epithet_slider", val);
-      };
-
-      if (slider) {
-        updateSliderLabels();
-        slider.addEventListener("input", updateSliderLabels);
-      }
-
-      // Listen for changes to save author and poem text dynamically
-      if (authorInput) {
-        authorInput.addEventListener("input", () => {
-          localStorage.setItem("epithet_author", authorInput.value);
+        // Save on input
+        inputEl.addEventListener("input", () => {
+          localStorage.setItem(config.storageKey, inputEl.value);
         });
-      }
+      });
 
-      if (poemTextarea) {
-        poemTextarea.addEventListener("input", () => {
-          localStorage.setItem("epithet_poem", poemTextarea.value);
-        });
-      }
+      // --- SLIDER SYNC & PERSISTENCE ---
+      const sliderConfigs = [
+        {
+          modalId: "aim-slider",
+          formId: "form-closeness-slider",
+          displayId: "aim-value-display",
+          storageKey: "epithet_aim_slider",
+          formatDisplay: (val) => `${val}% literal meaning, ${100 - val}% emotional resonance`
+        },
+        {
+          modalId: "find-slider",
+          formId: "form-granularity-slider",
+          displayId: "find-value-display",
+          storageKey: "epithet_find_slider",
+          formatDisplay: (val) => `${val}% specific words, ${100 - val}% broader themes`
+        },
+        {
+          modalId: "context-slider",
+          formId: "form-context-slider",
+          displayId: "context-value-display",
+          storageKey: "epithet_context_slider",
+          formatDisplay: (val) => `${val} Lines`
+        },
+        {
+          modalId: "connections-slider",
+          formId: "form-connections-slider",
+          displayId: "connections-value-display",
+          storageKey: "epithet_connections_slider",
+          formatDisplay: (val) => `${val} Nodes`
+        },
+        {
+          modalId: "results-slider",
+          formId: "form-results-slider",
+          displayId: "results-value-display",
+          storageKey: "epithet_results_slider",
+          formatDisplay: (val) => `${val} Keywords`
+        }
+      ];
+
+      sliderConfigs.forEach((config) => {
+        const modalSlider = document.getElementById(config.modalId);
+        const formSlider = document.getElementById(config.formId);
+        const displayEl = document.getElementById(config.displayId);
+
+        if (!modalSlider) return;
+
+        // 1. Restore saved value from localStorage
+        const savedVal = localStorage.getItem(config.storageKey);
+        if (savedVal !== null) {
+          modalSlider.value = savedVal;
+        }
+
+        // 2. Initial sync function
+        const syncValues = () => {
+          const currentVal = modalSlider.value;
+
+          // Sync to hidden form input
+          if (formSlider) formSlider.value = currentVal;
+
+          // Update center text display
+          if (displayEl) displayEl.innerText = config.formatDisplay(currentVal);
+
+          // Save to localStorage
+          localStorage.setItem(config.storageKey, currentVal);
+        };
+
+        // 3. Run sync on page load (to apply saved values)
+        syncValues();
+
+        // 4. Run sync every time the slider is moved
+        modalSlider.addEventListener("input", syncValues);
+      });
     });
   </script>
 </html>
