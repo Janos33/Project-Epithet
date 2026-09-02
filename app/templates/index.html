@@ -33,16 +33,29 @@
     <div class="modal-body">
       <form id="settings-form">
         <div class="setting-group">
+          <!-- Presets -->
+          <label class="setting-label">Presets:</label>
+          <div class="preset-buttons">
+            <button type="button" class="preset-btn" data-preset="default">Default</button>
+            <button type="button" class="preset-btn" data-preset="literal">
+              The literal wording
+            </button>
+            <button type="button" class="preset-btn" data-preset="subtle">
+              The subtle meaning
+            </button>
+            <button type="button" class="preset-btn" data-preset="feel">
+              The feel of the poem
+            </button>
+          </div>
           <!-- Slider 1 -->
           <label class="setting-label">The engine should aim for:</label>
           <div class="two-sided-slider-container">
             <span class="slider-end-label" id="slider-end-label-literal">Literal meaning</span>
             <input
               type="range"
-              id="aim-slider"
-              name="aim_mode"
-              min="40"
-              max="80"
+              id="emotional-slider"
+              min="0"
+              max="100"
               step="5"
               value="60"
               class="custom-slider"
@@ -51,17 +64,16 @@
               >Emotional resonance</span
             >
           </div>
-          <div id="aim-value-display" class="slider-under-label">50%</div>
+          <div id="emotional-value-display" class="slider-under-label">60%</div>
 
           <!-- Slider 2 -->
           <label class="setting-label">The engine should try to find:</label>
           <div class="two-sided-slider-container">
-            <span class="slider-end-label" id="slider-end-label-words">Specific words</span>
+            <span class="slider-end-label" id="slider-end-label-words">Wording</span>
             <input
               type="range"
-              id="find-slider"
-              name="find_mode"
-              min="70"
+              id="line-slider"
+              min="0"
               max="100"
               step="5"
               value="85"
@@ -69,7 +81,7 @@
             />
             <span class="slider-end-label" id="slider-end-label-themes">Broader themes</span>
           </div>
-          <div id="find-value-display" class="slider-under-label">50%</div>
+          <div id="line-value-display" class="slider-under-label">85%</div>
 
           <!-- Slider 3 -->
           <label class="setting-label">How far should the engine look for context?</label>
@@ -78,16 +90,15 @@
             <input
               type="range"
               id="context-slider"
-              name="context_mode"
               min="5"
-              max="30"
-              step="1"
-              value="5"
+              max="100"
+              step="5"
+              value="10"
               class="custom-slider"
             />
             <span class="slider-end-label" id="slider-end-label-wide">Wide</span>
           </div>
-          <div id="context-value-display" class="slider-under-label">15 Lines</div>
+          <div id="context-value-display" class="slider-under-label">10 Lines</div>
 
           <!-- Slider 4 -->
           <label class="setting-label"
@@ -98,16 +109,15 @@
             <input
               type="range"
               id="connections-slider"
-              name="connections_mode"
               min="10"
               max="200"
               step="10"
-              value="80"
+              value="40"
               class="custom-slider"
             />
             <span class="slider-end-label" id="slider-end-label-many">Many</span>
           </div>
-          <div id="connections-value-display" class="slider-under-label">30 Nodes</div>
+          <div id="connections-value-display" class="slider-under-label">40 Nodes</div>
 
           <!-- Slider 5 -->
           <label class="setting-label">How many keywords would you like to get?</label>
@@ -116,10 +126,9 @@
             <input
               type="range"
               id="results-slider"
-              name="results_mode"
               min="20"
-              max="100"
-              step="10"
+              max="200"
+              step="20"
               value="20"
               class="custom-slider"
             />
@@ -162,36 +171,40 @@
         type="range"
         id="form-closeness-slider"
         name="emotional_weight"
-        min="40"
-        max="80"
+        min="0"
+        max="100"
         value="60"
+        step="5"
         hidden
       />
       <input
         type="range"
         id="form-granularity-slider"
         name="line_weight"
-        min="70"
+        min="0"
         max="100"
         value="85"
+        step="5"
         hidden
       />
       <input
         type="range"
         id="form-context-slider"
         name="context_line_amount"
-        min="1"
-        max="50"
-        value="15"
+        min="5"
+        max="100"
+        value="10"
+        step="5"
         hidden
       />
       <input
         type="range"
         id="form-connections-slider"
         name="neighborhood_amount"
-        min="5"
-        max="100"
-        value="30"
+        min="10"
+        max="200"
+        value="40"
+        step="10"
         hidden
       />
       <input
@@ -199,8 +212,9 @@
         id="form-results-slider"
         name="max_results"
         min="20"
-        max="80"
+        max="200"
         value="20"
+        step="20"
         hidden
       />
 

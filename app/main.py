@@ -23,11 +23,11 @@ def results():
     # 1. Check textarea first
     poem_text = request.form.get("poem_text")
     author_name = request.form.get("author_name")
-    emotional_weight = int(request.form.get("closeness_mode", 60)) / 100
-    line_weight = int(request.form.get("line_weight", 85)) / 100
-    context_line_amount = int(request.form.get("context_line_amount", 5))
-    neighborhood_amount = int(request.form.get("neighborhood_amount", 80))
-    max_results = int(request.form.get("max_results", 20))
+    emotional_weight = int(request.form.get("emotional_weight")) / 100
+    line_weight = int(request.form.get("line_weight")) / 100
+    context_line_amount = int(request.form.get("context_line_amount"))
+    neighborhood_amount = int(request.form.get("neighborhood_amount"))
+    max_results = int(request.form.get("max_results"))
 
     # 2. Guard against completely empty submissions
     if not poem_text or not poem_text.strip():
