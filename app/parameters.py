@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from dataclasses import dataclass
 
 # --- Paths ---
 
@@ -93,3 +94,12 @@ EMOTIONAL_ANCHORS = {
         "wither",
     ],
 }
+
+
+@dataclass
+class Weights:
+    emotional_weight: float
+    line_weight: float
+    context_line_amount: int
+    neighborhood_amount: int
+    max_results: int

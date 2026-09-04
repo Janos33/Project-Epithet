@@ -1,6 +1,7 @@
-from engine import load_dataset, find_keywords
+from engine import PoemKeywordExtractor
 from flask import Flask, jsonify, render_template, request
 from dotenv import load_dotenv
+import parameters
 
 load_dotenv()
 
@@ -8,7 +9,7 @@ app = Flask(__name__)
 
 # Load data at start
 print("Initializing engine and loading dataset into memory...")
-RAW_EMBEDDINGS, CLUSTER_LABELS, METADATA = load_dataset()
+extractor = PoemKeywordExtractor()
 print("Engine ready!")
 
 
@@ -23,28 +24,21 @@ def results():
     # 1. Check textarea first
     poem_text = request.form.get("poem_text")
     author_name = request.form.get("author_name")
-    emotional_weight = int(request.form.get("emotional_weight")) / 100
-    line_weight = int(request.form.get("line_weight")) / 100
-    context_line_amount = int(request.form.get("context_line_amount"))
-    neighborhood_amount = int(request.form.get("neighborhood_amount"))
-    max_results = int(request.form.get("max_results"))
+
+    weights = parameters.Weights(
+        emotional_weight=int(request.form.get("emotional_weight")) / 100,
+        line_weight=int(request.form.get("line_weight")) / 100,
+        context_line_amount=int(request.form.get("context_line_amount")),
+        neighborhood_amount=int(request.form.get("neighborhood_amount")),
+        max_results=int(request.form.get("max_results")),
+    )
 
     # 2. Guard against completely empty submissions
     if not poem_text or not poem_text.strip():
         return render_template("results.html", keywords=[])
 
     # 3. Run pipeline
-    results = find_keywords(
-        poem_text,
-        emotional_weight,
-        line_weight,
-        context_line_amount,
-        neighborhood_amount,
-        max_results,
-        RAW_EMBEDDINGS,
-        CLUSTER_LABELS,
-        METADATA,
-    )
+    results = extractor.extract(poem_text, weights)
 
     if results is None:
         results = []
