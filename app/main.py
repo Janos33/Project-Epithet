@@ -35,7 +35,7 @@ def results():
 
     # 2. Guard against completely empty submissions
     if not poem_text or not poem_text.strip():
-        return render_template("results.html", keywords=[])
+        return render_template("index.html", keywords=[])
 
     # 3. Run pipeline
     results = extractor.extract(poem_text, weights)
@@ -43,7 +43,7 @@ def results():
     if results is None:
         results = []
 
-    return render_template("results.html", keywords=results, author=author_name)
+    return render_template("index.html", keywords=results, author=author_name)
 
 
 if __name__ == "__main__":

@@ -1,227 +1,372 @@
-{% extends "base.html" %} {% block title %}Project Epithet{% endblock %} {% block settings_button %}
-<button type="button" class="window-icon-btn settings-btn" aria-label="Options" id="settings-btn">
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.75"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  >
-    <path
-      d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-    ></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-</button>
-{% endblock %} {% block settings_modal %}
-<dialog id="settings-modal" class="modal-dialog">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>Settings</h2>
-      <button
-        type="button"
-        class="modal-close-btn"
-        id="close-settings-modal"
-        aria-label="Close dialog"
-      >
-        &times;
-      </button>
-    </div>
-    <div class="modal-body">
-      <form id="settings-form">
-        <div class="setting-group">
-          <!-- Presets -->
-          <label class="setting-label">Presets:</label>
-          <div class="preset-buttons">
-            <button type="button" class="preset-btn" data-preset="default">Default</button>
-            <button type="button" class="preset-btn" data-preset="literal">
-              The literal wording
-            </button>
-            <button type="button" class="preset-btn" data-preset="subtle">
-              The subtle meaning
-            </button>
-            <button type="button" class="preset-btn" data-preset="feel">
-              The feel of the poem
-            </button>
-          </div>
-          <!-- Slider 1 -->
-          <label class="setting-label">The engine should aim for:</label>
-          <div class="two-sided-slider-container">
-            <span class="slider-end-label" id="slider-end-label-literal">Literal meaning</span>
-            <input
-              type="range"
-              id="emotional-slider"
-              min="0"
-              max="100"
-              step="5"
-              value="60"
-              class="custom-slider"
-            />
-            <span class="slider-end-label" id="slider-end-label-emotional"
-              >Emotional resonance</span
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      {% if keywords is defined %} Project Epithet - Results {% else %} Project Epithet {% endif %}
+    </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/swap.js') }}" defer></script>
+  </head>
+  <body>
+    <!-- FIXED: Strictly toggles the CSS wrapper class based on the state -->
+    <main
+      class="{% if keywords is defined %}results-container{% else %}page-wrapper{% endif %} app-window"
+    >
+      <header class="window-header">
+        <!-- Header Navigation (Back button, shown only on results) -->
+        {% if keywords is defined %}
+        <nav>
+          <a href="{{ url_for('index') }}" class="window-icon-btn" aria-label="New Poem">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             >
-          </div>
-          <div id="emotional-value-display" class="slider-under-label">60%</div>
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </a>
+        </nav>
+        {% endif %}
 
-          <!-- Slider 2 -->
-          <label class="setting-label">The engine should try to find:</label>
-          <div class="two-sided-slider-container">
-            <span class="slider-end-label" id="slider-end-label-words">Wording</span>
+        <div class="window-actions">
+          <!-- Info Button (Always visible) -->
+          <button type="button" class="window-icon-btn info-btn" aria-label="Info" id="info-btn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </button>
+
+          <!-- Settings Button (Shown only on form) -->
+          {% if keywords is undefined %}
+          <button
+            type="button"
+            class="window-icon-btn settings-btn"
+            aria-label="Options"
+            id="settings-btn"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+              ></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+          {% endif %}
+        </div>
+      </header>
+
+      <!-- MAIN CONTENT -->
+      {% if keywords is defined %}
+
+      <!-- RESULTS VIEW -->
+      <div class="header-block">
+        <h1 class="heading-light">Project Epithet</h1>
+        <p class="subtitle">
+          {% if author and author.strip() %} The Epithet of {{ author }} {% else %} An Epithet {%
+          endif %}
+        </p>
+      </div>
+
+      <div class="keyword-grid">
+        {% for kw in keywords %}
+        <div class="keyword-card" style="--card-accent: {{ kw.color }};">
+          <div class="keyword-header">
+            <span class="keyword-text">{{ kw.word }}</span>
+          </div>
+          <span class="keyword-score">Score: {{ "%.3f"|format(kw.score or 0) }}</span>
+        </div>
+        {% else %}
+        <p class="empty-state">No matching neighborhoods or keywords found for this poem.</p>
+        {% endfor %}
+      </div>
+
+      {% else %}
+
+      <!-- FORM VIEW -->
+      <form action="{{ url_for('results') }}" method="POST" class="app-form">
+        <div class="form-container">
+          <div class="header-block">
+            <h1 class="heading-light">Project Epithet</h1>
+            <p class="subtitle">The words that define you</p>
+          </div>
+          <div class="form-content">
+            <label for="author_name" class="visually-hidden">Author Name</label>
+            <input
+              type="text"
+              id="author_name"
+              name="author_name"
+              placeholder="Write the name of the author here"
+              class="sync-input"
+            />
+
+            <label for="poem_text" class="visually-hidden">Poem or Text Entry</label>
+            <textarea
+              name="poem_text"
+              id="poem_text"
+              rows="12"
+              placeholder="Paste your poems here..."
+              class="sync-input"
+              autofocus
+              required
+            ></textarea>
+
+            <!-- Hidden Inputs to store slider data from the modal -->
             <input
               type="range"
-              id="line-slider"
+              id="form-closeness-slider"
+              name="emotional_weight"
               min="0"
               max="100"
+              value="60"
               step="5"
-              value="85"
-              class="custom-slider"
+              hidden
             />
-            <span class="slider-end-label" id="slider-end-label-themes">Broader themes</span>
-          </div>
-          <div id="line-value-display" class="slider-under-label">85%</div>
-
-          <!-- Slider 3 -->
-          <label class="setting-label">How far should the engine look for context?</label>
-          <div class="two-sided-slider-container">
-            <span class="slider-end-label" id="slider-end-label-narrow">Narrow</span>
             <input
               type="range"
-              id="context-slider"
+              id="form-granularity-slider"
+              name="line_weight"
+              min="0"
+              max="100"
+              value="85"
+              step="5"
+              hidden
+            />
+            <input
+              type="range"
+              id="form-context-slider"
+              name="context_line_amount"
               min="5"
               max="100"
-              step="5"
               value="10"
-              class="custom-slider"
+              step="5"
+              hidden
             />
-            <span class="slider-end-label" id="slider-end-label-wide">Wide</span>
-          </div>
-          <div id="context-value-display" class="slider-under-label">10 Lines</div>
-
-          <!-- Slider 4 -->
-          <label class="setting-label"
-            >How many thematic connections should the engine consider?</label
-          >
-          <div class="two-sided-slider-container">
-            <span class="slider-end-label" id="slider-end-label-few">Few</span>
             <input
               type="range"
-              id="connections-slider"
+              id="form-connections-slider"
+              name="neighborhood_amount"
               min="10"
               max="200"
-              step="10"
               value="40"
-              class="custom-slider"
+              step="10"
+              hidden
             />
-            <span class="slider-end-label" id="slider-end-label-many">Many</span>
-          </div>
-          <div id="connections-value-display" class="slider-under-label">40 Nodes</div>
-
-          <!-- Slider 5 -->
-          <label class="setting-label">How many keywords would you like to get?</label>
-          <div class="two-sided-slider-container">
-            <span class="slider-end-label" id="slider-end-label-min">Min</span>
             <input
               type="range"
-              id="results-slider"
+              id="form-results-slider"
+              name="max_results"
               min="20"
               max="200"
-              step="20"
               value="20"
-              class="custom-slider"
+              step="20"
+              hidden
             />
-            <span class="slider-end-label" id="slider-end-label-max">Max</span>
+
+            <div class="form-submit-wrapper">
+              <button type="submit" class="primary-submit-btn">Find your words</button>
+            </div>
           </div>
-          <div id="results-value-display" class="slider-under-label">20</div>
         </div>
       </form>
-    </div>
-  </div>
-</dialog>
-{% endblock %} {% block content %}
-<form action="{{ url_for('results') }}" method="POST" class="app-form">
-  <div class="form-container">
-    <div class="header-block">
-      <h1 class="heading-light">Project Epithet</h1>
-      <p class="subtitle">The words that define you</p>
-    </div>
-    <div class="form-content">
-      <label for="author_name" class="visually-hidden">Author Name</label>
-      <input
-        type="text"
-        id="author_name"
-        name="author_name"
-        placeholder="Write the name of the author here"
-        class="sync-input"
-      />
-      <label for="poem_text" class="visually-hidden">Poem or Text Entry</label>
-      <textarea
-        name="poem_text"
-        id="poem_text"
-        rows="12"
-        placeholder="Paste your poems here..."
-        class="sync-input"
-        autofocus
-        required
-      ></textarea>
 
-      <input
-        type="range"
-        id="form-closeness-slider"
-        name="emotional_weight"
-        min="0"
-        max="100"
-        value="60"
-        step="5"
-        hidden
-      />
-      <input
-        type="range"
-        id="form-granularity-slider"
-        name="line_weight"
-        min="0"
-        max="100"
-        value="85"
-        step="5"
-        hidden
-      />
-      <input
-        type="range"
-        id="form-context-slider"
-        name="context_line_amount"
-        min="5"
-        max="100"
-        value="10"
-        step="5"
-        hidden
-      />
-      <input
-        type="range"
-        id="form-connections-slider"
-        name="neighborhood_amount"
-        min="10"
-        max="200"
-        value="40"
-        step="10"
-        hidden
-      />
-      <input
-        type="range"
-        id="form-results-slider"
-        name="max_results"
-        min="20"
-        max="200"
-        value="20"
-        step="20"
-        hidden
-      />
+      {% endif %}
+    </main>
 
-      <div class="form-submit-wrapper">
-        <button type="submit" class="primary-submit-btn">Find your words</button>
+    <!-- Info Modal (Always included in DOM) -->
+    <dialog id="info-modal" class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>About Project Epithet</h2>
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="close-info-modal"
+            aria-label="Close dialog"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <p>
+            Discover the words that define your writing. <strong>Project Epithet</strong> is a
+            graph-based NLP engine that attempts to describe you based on your work, and also
+            compare you to others.
+          </p>
+          <p>
+            The poems are processed entirely within your browser using decentralized client-side
+            statistical processing. Because your text is converted into abstract numerical
+            embeddings locally on your own device, the raw poetry or prose you write is never sent
+            across the internet or stored on external servers, ensuring complete privacy and data
+            anonymity.
+          </p>
+          <p>
+            <a href="https://github.com/Janos33/Epithet">Github link</a>
+          </p>
+          <p>
+            <a href="https://huggingface.co/datasets/DanFosing/public-domain-poetry"
+              >Source of poems used for this project</a
+            >
+          </p>
+        </div>
       </div>
-    </div>
-  </div>
-</form>
-{% endblock %}
+    </dialog>
+
+    <!-- Settings Modal (Shown only on form) -->
+    {% if keywords is undefined %}
+    <dialog id="settings-modal" class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="close-settings-modal"
+            aria-label="Close dialog"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="settings-form">
+            <div class="setting-group">
+              <!-- Presets -->
+              <label class="setting-label">Presets:</label>
+              <div class="preset-buttons">
+                <button type="button" class="preset-btn" data-preset="default">Default</button>
+                <button type="button" class="preset-btn" data-preset="literal">
+                  The literal wording
+                </button>
+                <button type="button" class="preset-btn" data-preset="subtle">
+                  The subtle meaning
+                </button>
+                <button type="button" class="preset-btn" data-preset="feel">
+                  The feel of the poem
+                </button>
+              </div>
+
+              <!-- Slider 1 -->
+              <label class="setting-label">The engine should aim for:</label>
+              <div class="two-sided-slider-container">
+                <span class="slider-end-label" id="slider-end-label-literal">Literal meaning</span>
+                <input
+                  type="range"
+                  id="emotional-slider"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value="60"
+                  class="custom-slider"
+                />
+                <span class="slider-end-label" id="slider-end-label-emotional"
+                  >Emotional resonance</span
+                >
+              </div>
+              <div id="emotional-value-display" class="slider-under-label">60%</div>
+
+              <!-- Slider 2 -->
+              <label class="setting-label">The engine should try to find:</label>
+              <div class="two-sided-slider-container">
+                <span class="slider-end-label" id="slider-end-label-words">Wording</span>
+                <input
+                  type="range"
+                  id="line-slider"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value="85"
+                  class="custom-slider"
+                />
+                <span class="slider-end-label" id="slider-end-label-themes">Broader themes</span>
+              </div>
+              <div id="line-value-display" class="slider-under-label">85%</div>
+
+              <!-- Slider 3 -->
+              <label class="setting-label">How far should the engine look for context?</label>
+              <div class="two-sided-slider-container">
+                <span class="slider-end-label" id="slider-end-label-narrow">Narrow</span>
+                <input
+                  type="range"
+                  id="context-slider"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value="10"
+                  class="custom-slider"
+                />
+                <span class="slider-end-label" id="slider-end-label-wide">Wide</span>
+              </div>
+              <div id="context-value-display" class="slider-under-label">10 Lines</div>
+
+              <!-- Slider 4 -->
+              <label class="setting-label"
+                >How many thematic connections should the engine consider?</label
+              >
+              <div class="two-sided-slider-container">
+                <span class="slider-end-label" id="slider-end-label-few">Few</span>
+                <input
+                  type="range"
+                  id="connections-slider"
+                  min="10"
+                  max="200"
+                  step="10"
+                  value="40"
+                  class="custom-slider"
+                />
+                <span class="slider-end-label" id="slider-end-label-many">Many</span>
+              </div>
+              <div id="connections-value-display" class="slider-under-label">40 Nodes</div>
+
+              <!-- Slider 5 -->
+              <label class="setting-label">How many keywords would you like to get?</label>
+              <div class="two-sided-slider-container">
+                <span class="slider-end-label" id="slider-end-label-min">Min</span>
+                <input
+                  type="range"
+                  id="results-slider"
+                  min="20"
+                  max="200"
+                  step="20"
+                  value="20"
+                  class="custom-slider"
+                />
+                <span class="slider-end-label" id="slider-end-label-max">Max</span>
+              </div>
+              <div id="results-value-display" class="slider-under-label">20</div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
+    {% endif %}
+  </body>
+</html>
