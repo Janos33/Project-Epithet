@@ -10,7 +10,7 @@ import torch
 
 class PoemKeywordExtractor:
     def __init__(self):
-        self.raw_embeddings = np.load(MASTER_EMBEDDINGS_PATH)
+        self.raw_embeddings = np.load(MASTER_EMBEDDINGS_PATH).astype("float32")
         self.cluster_labels = np.load(COORDS_PATH)["cluster_labels"]
         self.metadata = json.load(open(METADATA_PATH, "r", encoding="utf-8"))
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
@@ -23,19 +23,20 @@ class PoemKeywordExtractor:
 
     def process_poem(
         self,
-        poem_text: str,
+        poem_embeddings: list[torch.Tensor],
         k: int = 15,
     ) -> tuple[list[int], list[dict]]:
-        poem_split = [line.strip() for line in poem_text.splitlines() if line.strip()]
+        # 1. Convert the incoming list of lists from JavaScript into a 2D NumPy array
+        poem_embeddings_np = np.array(poem_embeddings, dtype=np.float32)
 
-        poem_embeddings = [self.embedder.encode(line) for line in poem_split]
-
-        similarity_matrix = cosine_similarity(poem_embeddings, self.raw_embeddings)
+        # 2. Compare the client embeddings against your master dataset
+        similarity_matrix = cosine_similarity(poem_embeddings_np, self.raw_embeddings)
 
         poem_matching_records = []
         valid_clusters_set = set()
 
-        for i, line in enumerate(poem_split):
+        # 3. Iterate directly over the embeddings, NOT the text lines
+        for i, embedding in enumerate(poem_embeddings):
             # Get the indices of the top K closest master lines
             top_k_indices = np.argsort(similarity_matrix[i])[-k:][::-1]
 
@@ -45,8 +46,8 @@ class PoemKeywordExtractor:
             # Filter out noise (-1) from the clusters
             valid_neighbor_clusters = [c for c in neighbor_clusters if c != -1]
 
-            # Find emotion of line
-            keyword_vec = self.embedder.encode(line, convert_to_tensor=True)
+            # Find emotion of line:.
+            keyword_vec = torch.tensor(embedding)
 
             scores = []
 
@@ -231,12 +232,12 @@ class PoemKeywordExtractor:
 
     def extract(
         self,
-        poem_text,
+        poem_embeddings,
         weights,
     ):
         # --- 1. Process Input Poem, Generate Neighborhoods ---
         poem_clusters_set, poem_metadata = self.process_poem(
-            poem_text, k=weights.context_line_amount
+            poem_embeddings, k=weights.context_line_amount
         )
 
         if not poem_clusters_set:

@@ -485,6 +485,13 @@ button[type="submit"]:hover,
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.char-counter {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 5px;
+}
+
 .custom-slider::-moz-range-thumb {
   width: 27px;
   height: 27px;

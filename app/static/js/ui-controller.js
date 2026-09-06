@@ -1,40 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- MODAL SETUP ---
-  function setupModal(openBtnSelector, modalId, closeBtnId) {
-    const openBtn = document.querySelector(openBtnSelector);
-    const modal = document.getElementById(modalId);
-    const closeBtn = document.getElementById(closeBtnId);
-
-    if (openBtn && modal) {
-      openBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        modal.showModal();
-      });
-
-      if (closeBtn) {
-        closeBtn.addEventListener("click", () => {
-          modal.close();
-        });
-      }
-
-      modal.addEventListener("click", (e) => {
-        const bounds = modal.getBoundingClientRect();
-        if (
-          e.clientX < bounds.left ||
-          e.clientX > bounds.right ||
-          e.clientY < bounds.top ||
-          e.clientY > bounds.bottom
-        ) {
-          modal.close();
-        }
-      });
-    }
-  }
-
-  setupModal(".info-btn", "info-modal", "close-info-modal");
-  setupModal(".settings-btn", "settings-modal", "close-settings-modal");
-
-  // --- TEXT INPUT PERSISTENCE ---
+  // ==========================================
+  // 1. TEXT INPUTS: PERSISTENCE
+  // ==========================================
   const textInputs = [
     { id: "author_name", storageKey: "epithet_author" },
     { id: "poem_text", storageKey: "epithet_poem" }
@@ -44,19 +11,49 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputEl = document.getElementById(config.id);
     if (!inputEl) return;
 
-    // Restore value
+    // Restore saved value on page load
     const savedValue = localStorage.getItem(config.storageKey);
     if (savedValue !== null) {
       inputEl.value = savedValue;
     }
 
-    // Save on input
+    // Save to localStorage whenever user types
     inputEl.addEventListener("input", () => {
       localStorage.setItem(config.storageKey, inputEl.value);
     });
   });
 
-  // --- SLIDER SYNC & PERSISTENCE ---
+  // ==========================================
+  // 2. LIVE CHARACTER COUNTER
+  // ==========================================
+  const poemTextarea = document.getElementById("poem_text");
+  const charCounter = document.getElementById("char-counter");
+
+  if (poemTextarea && charCounter) {
+    const updateCounter = () => {
+      const currentLength = poemTextarea.value.length;
+      const maxLength = poemTextarea.maxLength || 50000;
+
+      charCounter.textContent = `${currentLength.toLocaleString()} / ${maxLength.toLocaleString()}`;
+
+      // Turn red if maxed out, revert to normal if not
+      if (currentLength >= maxLength) {
+        charCounter.style.color = "#e74c3c";
+      } else {
+        charCounter.style.color = "";
+      }
+    };
+
+    // Run immediately to count any text restored from localStorage
+    updateCounter();
+
+    // Update dynamically as the user types
+    poemTextarea.addEventListener("input", updateCounter);
+  }
+
+  // ==========================================
+  // 3. SLIDERS: SYNC & PERSISTENCE
+  // ==========================================
   const sliderConfigs = [
     {
       modalId: "emotional-slider",
@@ -102,34 +99,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!modalSlider) return;
 
-    // 1. Restore saved value from localStorage
+    // Restore saved value from localStorage
     const savedVal = localStorage.getItem(config.storageKey);
     if (savedVal !== null) {
       modalSlider.value = savedVal;
     }
 
-    // 2. Initial sync function
+    // Sync function: updates UI, hidden forms, and local storage
     const syncValues = () => {
       const currentVal = modalSlider.value;
-
-      // Sync to hidden form input
       if (formSlider) formSlider.value = currentVal;
-
-      // Update center text display
       if (displayEl) displayEl.innerText = config.formatDisplay(currentVal);
-
-      // Save to localStorage
       localStorage.setItem(config.storageKey, currentVal);
     };
 
-    // 3. Run sync on page load (to apply saved values)
+    // Run sync on page load to apply saved values
     syncValues();
 
-    // 4. Run sync every time the slider is moved
+    // Run sync every time the slider is moved
     modalSlider.addEventListener("input", syncValues);
   });
 
-  // --- PRESETS ---
+  // ==========================================
+  // 4. PRESETS
+  // ==========================================
   const PRESETS = {
     default: {
       emotional_weight: 60,
@@ -195,4 +188,44 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   });
+
+  // ==========================================
+  // 5. MODAL SETUP
+  // ==========================================
+  function setupModal(openBtnSelector, modalId, closeBtnId) {
+    const openBtn = document.querySelector(openBtnSelector);
+    const modal = document.getElementById(modalId);
+    const closeBtn = document.getElementById(closeBtnId);
+
+    if (openBtn && modal) {
+      // Open modal
+      openBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        modal.showModal();
+      });
+
+      // Close modal via button
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+          modal.close();
+        });
+      }
+
+      // Close modal by clicking outside the bounds
+      modal.addEventListener("click", (e) => {
+        const bounds = modal.getBoundingClientRect();
+        if (
+          e.clientX < bounds.left ||
+          e.clientX > bounds.right ||
+          e.clientY < bounds.top ||
+          e.clientY > bounds.bottom
+        ) {
+          modal.close();
+        }
+      });
+    }
+  }
+
+  setupModal(".info-btn", "info-modal", "close-info-modal");
+  setupModal(".settings-btn", "settings-modal", "close-settings-modal");
 });

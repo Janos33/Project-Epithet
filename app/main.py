@@ -1,3 +1,4 @@
+import json
 from engine import PoemKeywordExtractor
 from flask import Flask, jsonify, render_template, request
 from dotenv import load_dotenv
@@ -6,8 +7,9 @@ import parameters
 load_dotenv()
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
+app.config["MAX_FORM_MEMORY_SIZE"] = 8 * 1024 * 1024  # 8 MB
 
-# Load data at start
 print("Initializing engine and loading dataset into memory...")
 extractor = PoemKeywordExtractor()
 print("Engine ready!")
@@ -15,15 +17,13 @@ print("Engine ready!")
 
 @app.route("/", methods=["GET"])
 def index():
-    # Renders your index.html form
     return render_template("index.html")
 
 
 @app.route("/results", methods=["POST"])
 def results():
-    # 1. Check textarea first
-    poem_text = request.form.get("poem_text")
-    author_name = request.form.get("author_name")
+    # 1. Grab the mathematically encoded embeddings from the frontend
+    client_embeddings_raw = request.form.get("client_poem_embeddings")
 
     weights = parameters.Weights(
         emotional_weight=int(request.form.get("emotional_weight")) / 100,
@@ -33,17 +33,20 @@ def results():
         max_results=int(request.form.get("max_results")),
     )
 
-    # 2. Guard against completely empty submissions
-    if not poem_text or not poem_text.strip():
+    # 2. Guard against completely empty submissions or bypassing the JS
+    if not client_embeddings_raw:
         return render_template("index.html", keywords=[])
 
-    # 3. Run pipeline
-    results = extractor.extract(poem_text, weights)
+    # Convert the JSON string representation back into a Python list
+    poem_embeddings = json.loads(client_embeddings_raw)
+
+    # 3. Run pipeline using the pre-calculated embeddings
+    results = extractor.extract(poem_embeddings, weights)
 
     if results is None:
         results = []
 
-    return render_template("index.html", keywords=results, author=author_name)
+    return render_template("index.html", keywords=results)
 
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@
       {% if keywords is defined %} Project Epithet - Results {% else %} Project Epithet {% endif %}
     </title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/swap.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-controller.js') }}" defer></script>
+    <script type="module" src="{{ url_for('static', filename='js/pipeline.js') }}"></script>
   </head>
   <body>
     <!-- FIXED: Strictly toggles the CSS wrapper class based on the state -->
@@ -90,10 +90,7 @@
       <!-- RESULTS VIEW -->
       <div class="header-block">
         <h1 class="heading-light">Project Epithet</h1>
-        <p class="subtitle">
-          {% if author and author.strip() %} The Epithet of {{ author }} {% else %} An Epithet {%
-          endif %}
-        </p>
+        <p class="subtitle" id="author-subtitle">An Epithet</p>
       </div>
 
       <div class="keyword-grid">
@@ -112,7 +109,12 @@
       {% else %}
 
       <!-- FORM VIEW -->
-      <form action="{{ url_for('results') }}" method="POST" class="app-form">
+      <form
+        action="{{ url_for('results') }}"
+        method="POST"
+        class="app-form"
+        enctype="multipart/form-data"
+      >
         <div class="form-container">
           <div class="header-block">
             <h1 class="heading-light">Project Epithet</h1>
@@ -123,21 +125,24 @@
             <input
               type="text"
               id="author_name"
-              name="author_name"
               placeholder="Write the name of the author here"
               class="sync-input"
+              maxlength="75"
             />
 
             <label for="poem_text" class="visually-hidden">Poem or Text Entry</label>
             <textarea
-              name="poem_text"
               id="poem_text"
               rows="12"
               placeholder="Paste your poems here..."
+              maxlength="25000"
               class="sync-input"
               autofocus
               required
             ></textarea>
+            <div class="textarea-footer">
+              <small id="char-counter" class="char-counter">0 / 25,000</small>
+            </div>
 
             <!-- Hidden Inputs to store slider data from the modal -->
             <input
