@@ -1,5 +1,14 @@
 import { EpithetEngine } from "./vector-engine.js";
 
+let isWaitingInQueue = false;
+
+// Warn user before closing/refreshing the tab while holding embeddings in queue
+window.addEventListener("beforeunload", (e) => {
+  if (isWaitingInQueue) {
+    e.preventDefault();
+  }
+});
+
 // --- TEXT PREPROCESSING FUNCTION ---
 function formatPoemText(rawText) {
   const LINE_LENGTH_THRESHOLD = 15;
@@ -50,15 +59,12 @@ function formatPoemText(rawText) {
 
   if (currentCombined) {
     if (processedLines.length > 0 && currentCombined.length < LINE_LENGTH_THRESHOLD) {
-      // Append short trailing text to the previous line so no words are lost
       processedLines[processedLines.length - 1] += " " + currentCombined;
     } else {
-      // Push as a standalone line (handles single words or short inputs)
       processedLines.push(currentCombined);
     }
   }
 
-  // Safety fallback: if processing yields nothing, return the trimmed raw text
   if (processedLines.length === 0 && rawText.trim().length > 0) {
     return rawText.trim();
   }
@@ -66,30 +72,87 @@ function formatPoemText(rawText) {
   return processedLines.join("\n");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. RESULTS PAGE LOGIC ---
-  const authorSubtitle = document.getElementById("author-subtitle");
-  if (authorSubtitle) {
-    const storedAuthor = sessionStorage.getItem("epithet_author");
-    if (storedAuthor && storedAuthor.trim() !== "") {
-      authorSubtitle.textContent = `The Epithet of ${storedAuthor}`;
-    }
-  }
+// --- QUEUE POLLING LOGIC ---
+async function startQueuePolling(ticketId, payload, submitBtn) {
+  isWaitingInQueue = true;
 
-  // --- 2. FORM PAGE LOGIC ---
+  const pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/queue/status/${ticketId}`);
+      if (!res.ok) throw new Error("Failed to check queue status");
+
+      const statusData = await res.json();
+
+      if (statusData.status === "waiting") {
+        submitBtn.textContent = `In Queue: Spot #${statusData.position}`;
+      } else if (statusData.status === "ready") {
+        clearInterval(pollInterval);
+        submitBtn.textContent = "Processing Data...";
+        await sendFinalPayload(ticketId, payload, submitBtn);
+      } else if (statusData.status === "expired") {
+        clearInterval(pollInterval);
+        isWaitingInQueue = false;
+        resetSubmitButton(submitBtn, "Session Expired. Try Again.");
+      }
+    } catch (error) {
+      clearInterval(pollInterval);
+      isWaitingInQueue = false;
+      console.error("Queue Polling Error:", error);
+      resetSubmitButton(submitBtn, "Queue Error. Try Again.");
+    }
+  }, 2500);
+}
+
+// --- FINAL PAYLOAD SUBMISSION ---
+async function sendFinalPayload(ticketId, payload, submitBtn) {
+  try {
+    const response = await fetch("/api/queue/process", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticket_id: ticketId,
+        ...payload
+      })
+    });
+
+    if (!response.ok) throw new Error("Processing failed on server.");
+
+    const resultData = await response.json();
+
+    isWaitingInQueue = false;
+    submitBtn.textContent = "Complete! Loading...";
+
+    // 1. Save data to sessionStorage so ui-controller.js can render it
+    sessionStorage.setItem("epithet_results", JSON.stringify(resultData));
+
+    // 2. Redirect to the results page
+    window.location.href = "/results";
+  } catch (error) {
+    isWaitingInQueue = false;
+    console.error("Submission Error:", error);
+    resetSubmitButton(submitBtn, "Error Processing Poem");
+  }
+}
+
+function resetSubmitButton(btn, text) {
+  btn.textContent = text;
+  btn.style.cursor = "pointer";
+  btn.style.opacity = "1";
+  btn.disabled = false;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
   const form = document.querySelector(".app-form");
 
   if (form) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const oldInput = form.querySelector('input[name="client_poem_embeddings"]');
-      if (oldInput) oldInput.remove();
-
       const submitBtn = form.querySelector(".primary-submit-btn");
       const poemText = document.getElementById("poem_text").value;
       const authorName = document.getElementById("author_name").value;
 
+      // Save author early in case of failure or reload
       sessionStorage.setItem("epithet_author", authorName);
 
       submitBtn.textContent = "Loading Engine...";
@@ -104,48 +167,37 @@ document.addEventListener("DOMContentLoaded", () => {
         const processedPoemText = formatPoemText(poemText);
         const poemEmbeddings = await engine.processPoem(processedPoemText);
 
-        const embeddingsInput = document.createElement("input");
-        embeddingsInput.type = "hidden";
-        embeddingsInput.name = "client_poem_embeddings";
+        // FIXED: Matched these IDs to your hidden input HTML IDs
+        const payload = {
+          embeddings: poemEmbeddings,
+          emotional_weight: document.getElementById("form-closeness-slider")?.value || 60,
+          line_weight: document.getElementById("form-granularity-slider")?.value || 85,
+          context_line_amount: document.getElementById("form-context-slider")?.value || 10,
+          neighborhood_amount: document.getElementById("form-connections-slider")?.value || 40,
+          max_results: document.getElementById("form-results-slider")?.value || 20
+        };
 
-        embeddingsInput.value = JSON.stringify(poemEmbeddings, (key, val) => {
-          return typeof val === "number" ? Number(val.toFixed(5)) : val;
+        submitBtn.textContent = "Joining Queue...";
+        const joinResponse = await fetch("/api/queue/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
         });
 
-        form.appendChild(embeddingsInput);
+        if (!joinResponse.ok) throw new Error("Could not join server queue.");
 
-        submitBtn.textContent = "Processing Data...";
-        form.submit();
+        const { ticket_id, position } = await joinResponse.json();
+
+        if (position === 0) {
+          submitBtn.textContent = "Processing Data...";
+          await sendFinalPayload(ticket_id, payload, submitBtn);
+        } else {
+          submitBtn.textContent = `In Queue: Spot #${position}`;
+          startQueuePolling(ticket_id, payload, submitBtn);
+        }
       } catch (error) {
-        console.error("Error processing poem:", error);
-
-        const failedInput = form.querySelector('input[name="client_poem_embeddings"]');
-        if (failedInput) failedInput.remove();
-
-        submitBtn.textContent = "Error processing";
-        submitBtn.style.cursor = "pointer";
-        submitBtn.style.opacity = "1";
-        submitBtn.disabled = false;
+        console.error("Error in submission pipeline:", error);
+        resetSubmitButton(submitBtn, "Error Processing");
       }
     });
-  }
-});
-
-// --- 3. BROWSER BACK-BUTTON FIX (bfcache) ---
-window.addEventListener("pageshow", (event) => {
-  if (event.persisted) {
-    const form = document.querySelector(".app-form");
-    if (form) {
-      const submitBtn = form.querySelector(".primary-submit-btn");
-      if (submitBtn) {
-        submitBtn.textContent = "Find your words";
-        submitBtn.style.cursor = "pointer";
-        submitBtn.style.opacity = "1";
-        submitBtn.disabled = false;
-      }
-
-      const leftoverInput = form.querySelector('input[name="client_poem_embeddings"]');
-      if (leftoverInput) leftoverInput.remove();
-    }
   }
 });

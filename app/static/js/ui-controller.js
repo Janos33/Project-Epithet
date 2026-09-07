@@ -1,9 +1,83 @@
+// --- BROWSER BACK-BUTTON FIX (bfcache) ---
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    const form = document.querySelector(".app-form");
+    if (form) {
+      const submitBtn = form.querySelector(".primary-submit-btn");
+      if (submitBtn) {
+        submitBtn.textContent = "Find your words";
+        submitBtn.style.cursor = "pointer";
+        submitBtn.style.opacity = "1";
+        submitBtn.disabled = false;
+      }
+    }
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
-  // 1. TEXT INPUTS: PERSISTENCE
+  // 1. RESULTS PAGE RENDERING & CLEANUP
+  // ==========================================
+  const resultsGrid = document.getElementById("keyword-grid");
+
+  if (resultsGrid) {
+    const authorSubtitle = document.getElementById("author-subtitle");
+    const storedAuthor = sessionStorage.getItem("epithet_author");
+    const storedResultsRaw = sessionStorage.getItem("epithet_results");
+
+    // Update Author Subtitle
+    if (authorSubtitle && storedAuthor && storedAuthor.trim() !== "") {
+      authorSubtitle.textContent = `Epithet of ${storedAuthor}`;
+    }
+
+    // Render Cards
+    if (storedResultsRaw) {
+      try {
+        const results = JSON.parse(storedResultsRaw);
+
+        if (Array.isArray(results) && results.length > 0) {
+          resultsGrid.innerHTML = ""; // Clear any placeholder
+
+          results.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "keyword-card";
+
+            const word = item.word !== undefined ? item.word : Array.isArray(item) ? item[0] : item;
+            const score = item.score !== undefined ? item.score : Array.isArray(item) ? item[1] : 0;
+
+            if (item.color) {
+              card.style.setProperty("--card-accent", item.color);
+              card.style.backgroundColor = item.color;
+            }
+
+            card.innerHTML = `
+              <div class="keyword-header">
+                <h3 class="keyword-text">${word}</h3>
+              </div>
+              <p class="keyword-score">Score: ${Number(score).toFixed(3)}</p>
+            `;
+            resultsGrid.appendChild(card);
+          });
+        } else {
+          resultsGrid.innerHTML = `<p class="empty-state">No matching neighborhoods or keywords found.</p>`;
+        }
+      } catch (err) {
+        console.error("Error parsing stored epithet results:", err);
+        resultsGrid.innerHTML = `<p class="empty-state">Error loading results.</p>`;
+      }
+
+      sessionStorage.removeItem("epithet_results");
+      sessionStorage.removeItem("epithet_author");
+    } else {
+      resultsGrid.innerHTML = `<p class="empty-state">No data found. Please return home and submit a poem.</p>`;
+    }
+  }
+
+  // ==========================================
+  // 2. TEXT INPUTS: PERSISTENCE
   // ==========================================
   const textInputs = [
-    { id: "author_name", storageKey: "epithet_author" },
+    { id: "author_name", storageKey: "epithet_author_input" }, // Kept distinct from sessionStorage queue data
     { id: "poem_text", storageKey: "epithet_poem" }
   ];
 
@@ -24,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 2. LIVE CHARACTER COUNTER
+  // 3. LIVE CHARACTER COUNTER
   // ==========================================
   const poemTextarea = document.getElementById("poem_text");
   const charCounter = document.getElementById("char-counter");
@@ -32,11 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (poemTextarea && charCounter) {
     const updateCounter = () => {
       const currentLength = poemTextarea.value.length;
-      const maxLength = poemTextarea.maxLength || 50000;
+      const maxLength = poemTextarea.maxLength || 25000;
 
       charCounter.textContent = `${currentLength.toLocaleString()} / ${maxLength.toLocaleString()}`;
 
-      // Turn red if maxed out, revert to normal if not
       if (currentLength >= maxLength) {
         charCounter.style.color = "#e74c3c";
       } else {
@@ -44,15 +117,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
 
-    // Run immediately to count any text restored from localStorage
     updateCounter();
-
-    // Update dynamically as the user types
     poemTextarea.addEventListener("input", updateCounter);
   }
 
   // ==========================================
-  // 3. SLIDERS: SYNC & PERSISTENCE
+  // 4. SLIDERS: SYNC & PERSISTENCE
   // ==========================================
   const sliderConfigs = [
     {
@@ -99,13 +169,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!modalSlider) return;
 
-    // Restore saved value from localStorage
     const savedVal = localStorage.getItem(config.storageKey);
     if (savedVal !== null) {
       modalSlider.value = savedVal;
     }
 
-    // Sync function: updates UI, hidden forms, and local storage
     const syncValues = () => {
       const currentVal = modalSlider.value;
       if (formSlider) formSlider.value = currentVal;
@@ -113,15 +181,12 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem(config.storageKey, currentVal);
     };
 
-    // Run sync on page load to apply saved values
     syncValues();
-
-    // Run sync every time the slider is moved
     modalSlider.addEventListener("input", syncValues);
   });
 
   // ==========================================
-  // 4. PRESETS
+  // 5. PRESETS
   // ==========================================
   const PRESETS = {
     default: {
@@ -165,14 +230,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!config) return;
 
-      // Apply the preset values to the visible modal sliders
       document.getElementById("emotional-slider").value = config.emotional_weight;
       document.getElementById("line-slider").value = config.theme_weight;
       document.getElementById("context-slider").value = config.context_depth;
       document.getElementById("connections-slider").value = config.max_connections;
       document.getElementById("results-slider").value = config.max_results;
 
-      // Safely dispatch the 'input' event to trigger UI updates and localStorage saves
       const sliderIds = [
         "emotional-slider",
         "line-slider",
@@ -182,15 +245,13 @@ document.addEventListener("DOMContentLoaded", () => {
       ];
       sliderIds.forEach((id) => {
         const slider = document.getElementById(id);
-        if (slider) {
-          slider.dispatchEvent(new Event("input"));
-        }
+        if (slider) slider.dispatchEvent(new Event("input"));
       });
     });
   });
 
   // ==========================================
-  // 5. MODAL SETUP
+  // 6. MODAL SETUP
   // ==========================================
   function setupModal(openBtnSelector, modalId, closeBtnId) {
     const openBtn = document.querySelector(openBtnSelector);
@@ -198,20 +259,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById(closeBtnId);
 
     if (openBtn && modal) {
-      // Open modal
       openBtn.addEventListener("click", (e) => {
         e.preventDefault();
         modal.showModal();
       });
 
-      // Close modal via button
       if (closeBtn) {
-        closeBtn.addEventListener("click", () => {
-          modal.close();
-        });
+        closeBtn.addEventListener("click", () => modal.close());
       }
 
-      // Close modal by clicking outside the bounds
       modal.addEventListener("click", (e) => {
         const bounds = modal.getBoundingClientRect();
         if (

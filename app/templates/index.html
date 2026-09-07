@@ -93,28 +93,12 @@
         <p class="subtitle" id="author-subtitle">An Epithet</p>
       </div>
 
-      <div class="keyword-grid">
-        {% for kw in keywords %}
-        <div class="keyword-card" style="--card-accent: {{ kw.color }};">
-          <div class="keyword-header">
-            <span class="keyword-text">{{ kw.word }}</span>
-          </div>
-          <span class="keyword-score">Score: {{ "%.3f"|format(kw.score or 0) }}</span>
-        </div>
-        {% else %}
-        <p class="empty-state">No matching neighborhoods or keywords found for this poem.</p>
-        {% endfor %}
-      </div>
+      <div class="keyword-grid" id="keyword-grid"></div>
 
       {% else %}
 
       <!-- FORM VIEW -->
-      <form
-        action="{{ url_for('results') }}"
-        method="POST"
-        class="app-form"
-        enctype="multipart/form-data"
-      >
+      <form class="app-form">
         <div class="form-container">
           <div class="header-block">
             <h1 class="heading-light">Project Epithet</h1>
