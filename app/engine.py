@@ -16,8 +16,15 @@ class PoemKeywordExtractor:
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
         self.emotional_embeddings = {}
 
-        for emotion, words in EMOTIONAL_ANCHORS.items():
-            # Encode all words for an emotion, then average them into a single vector (centroid)
+        EMOTIONAL_ANCHORS = json.load(
+            open(EMOTIONAL_ANCHORS_PATH, "r", encoding="utf-8")
+        )
+
+        emotions_dict = EMOTIONAL_ANCHORS.get("emotions", EMOTIONAL_ANCHORS)
+
+        for emotion, details in emotions_dict.items():
+            words = details["words"] if isinstance(details, dict) else details
+
             word_embeddings = self.embedder.encode(words, convert_to_tensor=True)
             self.emotional_embeddings[emotion] = torch.mean(word_embeddings, dim=0)
 

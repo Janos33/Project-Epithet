@@ -2,98 +2,26 @@ import os
 from pathlib import Path
 from dataclasses import dataclass
 
+# Note: ensure that the data here is consistent with the state that pipeline/parameters.py was in when the pipeline was last run.
+
 # --- Paths ---
 
 BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 PROCESSED_DIR = BASE_DATA_DIR / "processed"
 COORDS_PATH = PROCESSED_DIR / "clustered_data.npz"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
+CONFIG_PATH = BASE_DATA_DIR / "config"
 MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"
+EMOTIONAL_ANCHORS_PATH = CONFIG_PATH / "emotional-anchor.json"
 
-# --- Emotional Embeddings ---
+# --- Parameters ---
+# LINE_EMOTION_THRESHOLD - Minimum average emotion score for a line to be considered emotionally significant.
+# ATTENUATION_FACTOR - Weakens the influence of emotions that are below the LINE_EMOTION_THRESHOLD so words have stronger identities.
 
-ATTENUATION_FACTOR = 0.1
 LINE_EMOTION_THRESHOLD = 0.25
+ATTENUATION_FACTOR = 0.1
 
-EMOTIONAL_ANCHORS = {
-    "Radiance": [
-        "glow",
-        "radiance",
-        "joy",
-        "laughter",
-        "hope",
-        "dawn",
-        "promise",
-        "blossom",
-        "sunshine",
-    ],
-    "Serenity": [
-        "stillness",
-        "silence",
-        "calm",
-        "infinity",
-        "eternal",
-        "wonder",
-        "breeze",
-        "timeless",
-        "awe",
-    ],
-    "Passion": [
-        "passion",
-        "desire",
-        "burning",
-        "obsession",
-        "tender",
-        "heartbeat",
-        "yearning",
-    ],
-    "Melancholy": [
-        "grief",
-        "loneliness",
-        "mourning",
-        "regret",
-        "guilt",
-        "shame",
-        "sorrow",
-        "absence",
-        "memory",
-        "bittersweet",
-    ],
-    "Torment": [
-        "dread",
-        "fear",
-        "rage",
-        "storm",
-        "shatter",
-        "pain",
-        "broken",
-        "desolation",
-        "ruin",
-    ],
-    "Delirium": [
-        "madness",
-        "insanity",
-        "frenzy",
-        "chaos",
-        "eerie",
-        "haunting",
-        "shadow",
-        "abyss",
-        "mystery",
-    ],
-    "Transience": [
-        "time",
-        "fading",
-        "dust",
-        "fleeting",
-        "autumn",
-        "mortality",
-        "ephemeral",
-        "passing",
-        "vanishing",
-        "wither",
-    ],
-}
+# --- Dataclass for forwarding weights ---
 
 
 @dataclass

@@ -27,20 +27,35 @@ def get_neo4j_driver() -> Driver:
     return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 
-def process_embeddings() -> dict:
-    EMOTIONAL_EMBEDDINGS = {}
+def process_anchors() -> tuple[dict, dict]:
+    emotional_anchors_data = json.load(
+        open(EMOTIONAL_ANCHORS_PATH, "r", encoding="utf-8")
+    )
 
-    for emotion, words in EMOTIONAL_ANCHORS.items():
+    emotional_embeddings = {}
+    color_map = {}
+
+    emotions = emotional_anchors_data.get("emotions", emotional_anchors_data)
+
+    for emotion, details in emotions.items():
+        if isinstance(details, dict):
+            words = details["words"]
+            if "color" in details:
+                color_map[emotion] = details["color"]
+        else:
+            # Fallback if details is just a list of words
+            words = details
+
         # Encode all words for an emotion, then average them into a single vector (centroid)
         word_embeddings = embedder.encode(words, convert_to_tensor=True)
-        EMOTIONAL_EMBEDDINGS[emotion] = torch.mean(word_embeddings, dim=0)
+        emotional_embeddings[emotion] = torch.mean(word_embeddings, dim=0)
 
-    return EMOTIONAL_EMBEDDINGS
+    return emotional_embeddings, color_map
 
 
 embedder = SentenceTransformer(EMBEDDER_MODEL)
 nlp = spacy.load(SPACY_MODEL, disable=["parser", "ner"])
-EMOTIONAL_EMBEDDINGS = process_embeddings()
+EMOTIONAL_EMBEDDINGS, COLOR_MAP = process_anchors()
 
 
 def batch_ingest_lines(
