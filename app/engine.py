@@ -8,13 +8,52 @@ from parameters import *
 import torch
 
 
+class MetadataReader:
+    """
+    Builds a tiny byte-index of the dataset on boot.
+    Allows the engine to instantly grab specific lines from the hard drive
+    without loading all 2.1+ million JSON dictionaries into RAM.
+    """
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.line_offsets = []
+        print("Building ultra-fast disk index for metadata...")
+
+        # Read the file purely as bytes to find where each line starts
+        with open(filepath, "rb") as f:
+            offset = 0
+            for line in f:
+                self.line_offsets.append(offset)
+                offset += len(line)
+
+        # Store as a highly compressed C-array (~16MB of RAM total)
+        self.line_offsets = np.array(self.line_offsets, dtype=np.int64)
+        print(f"Index built! Tracking {len(self.line_offsets)} rows.")
+
+    def get_multiple(self, indices):
+        """Jumps directly to the required lines on disk without reading the rest of the file."""
+        results = []
+        with open(self.filepath, "r", encoding="utf-8") as f:
+            for idx in indices:
+                f.seek(self.line_offsets[idx])
+                results.append(json.loads(f.readline()))
+        return results
+
+
 class PoemKeywordExtractor:
     def __init__(self):
-        self.raw_embeddings = np.load(MASTER_EMBEDDINGS_PATH).astype("float32")
+        # FIX 1: np.memmap registers the 3.05 GB file to virtual memory (0 MB physical RAM on boot)
+        self.raw_embeddings = np.memmap(
+            MASTER_EMBEDDINGS_PATH, dtype=np.float32, mode="r"
+        ).reshape(-1, EMBEDDING_DIM)
+
         self.cluster_labels = np.load(COORDS_PATH)["cluster_labels"]
-        self.metadata = json.load(open(METADATA_PATH, "r", encoding="utf-8"))
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
         self.emotional_embeddings = {}
+
+        # FIX 2: MetadataReader handles the NDJSON file lazily (drops 9.3 GB of dictionary overhead)
+        self.metadata_reader = MetadataReader(METADATA_PATH)
 
         EMOTIONAL_ANCHORS = json.load(
             open(EMOTIONAL_ANCHORS_PATH, "r", encoding="utf-8")
@@ -128,7 +167,7 @@ class PoemKeywordExtractor:
         candidate_indices = np.where(valid_mask)[0]
 
         # Slice everything cleanly while maintaining 100% index alignment
-        filtered_metadata = [self.metadata[i] for i in candidate_indices]
+        filtered_metadata = self.metadata_reader.get_multiple(candidate_indices)
         filtered_cluster_labels = self.cluster_labels[candidate_indices]
 
         return filtered_metadata, filtered_cluster_labels

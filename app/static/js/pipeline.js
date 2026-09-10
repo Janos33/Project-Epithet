@@ -12,9 +12,9 @@ window.addEventListener("beforeunload", (e) => {
 // --- TEXT PREPROCESSING FUNCTION ---
 function formatPoemText(rawText) {
   const LINE_LENGTH_THRESHOLD = 15;
-  const MAX_LINE_LENGTH = 50;
+  const MAX_LINE_LENGTH = 250;
 
-  const rawLines = rawText.split(/\r?\n/);
+  const rawLines = rawText.split(/\r\n|\r|\n/);
   const processedLines = [];
   let currentCombined = "";
 
@@ -25,44 +25,52 @@ function formatPoemText(rawText) {
     let subLines = [];
 
     if (rawLine.length > MAX_LINE_LENGTH) {
-      const parts = rawLine.split(/(?<=[,;:!?.])\s+/);
+      const parts = rawLine
+        .split(/(?<=[,;:!?.])\s+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
       for (let p of parts) {
-        p = p.trim();
-        if (!p) continue;
-
         while (p.length > MAX_LINE_LENGTH) {
-          let splitIndex = p.lastIndexOf(" ", MAX_LINE_LENGTH);
-          if (splitIndex === -1) splitIndex = MAX_LINE_LENGTH;
+          let splitIndex = p.slice(0, MAX_LINE_LENGTH).lastIndexOf(" ");
+          if (splitIndex === -1) {
+            splitIndex = MAX_LINE_LENGTH;
+          }
 
           subLines.push(p.slice(0, splitIndex).trim());
           p = p.slice(splitIndex).trim();
         }
-        if (p.length > 0) subLines.push(p);
+        if (p.length > 0) {
+          subLines.push(p);
+        }
       }
     } else {
       subLines = [rawLine];
     }
 
+    // Recombine tiny lines together to give the model more context
     for (const line of subLines) {
-      if (line.length < LINE_LENGTH_THRESHOLD) {
-        currentCombined += currentCombined ? " " + line : line;
-      } else {
-        if (currentCombined) {
-          processedLines.push(currentCombined);
-          currentCombined = "";
-        }
-        processedLines.push(line);
+      currentCombined = currentCombined ? currentCombined + " " + line : line;
+
+      if (currentCombined.length >= LINE_LENGTH_THRESHOLD) {
+        processedLines.push(currentCombined);
+        currentCombined = "";
       }
     }
   }
 
+  // Handle lingering combined fragments at the end of the text
   if (currentCombined) {
     if (processedLines.length > 0 && currentCombined.length < LINE_LENGTH_THRESHOLD) {
-      processedLines[processedLines.length - 1] += " " + currentCombined;
+      processedLines[processedLines.length - 1] = (
+        processedLines[processedLines.length - 1] +
+        " " +
+        currentCombined.trim()
+      ).trim();
     } else {
       processedLines.push(currentCombined);
     }
+    currentCombined = "";
   }
 
   if (processedLines.length === 0 && rawText.trim().length > 0) {
