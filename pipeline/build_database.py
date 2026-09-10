@@ -19,6 +19,8 @@ from functools import lru_cache
 import spacy
 import torch
 from parameters import *
+import math
+import colorsys
 
 
 def get_neo4j_driver() -> Driver:
@@ -234,22 +236,41 @@ class PoetryGraphPipeline:
         relative_ratios = (top_scores / max_score) ** power
         weights = relative_ratios / relative_ratios.sum()
 
-        r_sq_sum, g_sq_sum, b_sq_sum = 0.0, 0.0, 0.0
+        x_sum, y_sum = 0.0, 0.0
+        s_sum, v_sum = 0.0, 0.0
 
         for idx, weight in zip(top_indices, weights):
             emotion = self.emotion_keys[idx]
             if emotion in self.color_rgb_map:
                 r, g, b = self.color_rgb_map[emotion]
-                r_sq_sum += weight * (r**2)
-                g_sq_sum += weight * (g**2)
-                b_sq_sum += weight * (b**2)
 
-        final_r = np.sqrt(r_sq_sum)
-        final_g = np.sqrt(g_sq_sum)
-        final_b = np.sqrt(b_sq_sum)
+                # Convert 0-255 RGB to 0.0-1.0 HSV
+                h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+
+                # Use circular vectors (sine/cosine) to average the hue angle correctly
+                hue_angle = h * 2 * math.pi
+                x_sum += weight * math.cos(hue_angle)
+                y_sum += weight * math.sin(hue_angle)
+
+                # Linearly average saturation and value
+                s_sum += weight * s
+                v_sum += weight * v
+
+        # Reconstruct the blended hue from the vectors
+        final_h = (math.atan2(y_sum, x_sum) / (2 * math.pi)) % 1.0
+
+        # Allow the natural weighted average to dictate saturation
+        # Vibrant emotions keep it high; gray emotions (Ennui/Void) pull it low
+        final_s = min(1.0, s_sum)
+        final_v = min(1.0, v_sum)
+
+        # Convert back to RGB for your hex output
+        final_r, final_g, final_b = colorsys.hsv_to_rgb(final_h, final_s, final_v)
 
         return "#{:02X}{:02X}{:02X}".format(
-            int(round(final_r)), int(round(final_g)), int(round(final_b))
+            int(round(final_r * 255)),
+            int(round(final_g * 255)),
+            int(round(final_b * 255)),
         )
 
     def ingest_data(self, session: neo4j.Session):
@@ -257,10 +278,11 @@ class PoetryGraphPipeline:
         counter = 0
         total_lines_ingested = 0
 
-        print("Loading dataset...")
+        print("Loading dataset from disk...")
         with open(RAW_POEMS_PATH, "r", encoding="utf-8") as f:
             des_data = json.load(f)
 
+        print("Processing and inserting data into Neo4j...")
         for poem in des_data:
             author = poem.get("Author", "Unknown")
             title = poem.get("Title", "Untitled")
@@ -419,13 +441,11 @@ def main():
 
     pipeline = PoetryGraphPipeline()
 
-    print("Connecting to driver")
+    print("Connecting to Neo4j...")
     with get_neo4j_driver() as driver:
-        print("Starting Neo4j session...")
         with driver.session() as session:
             print("Creating indexes and constraints...")
             pipeline.create_indexes(session)
-            print("Inserting data into Neo4j...")
             pipeline.ingest_data(session)
             print("Adding frequency ratios to keywords...")
             pipeline.add_frequency_to_keywords(session)
