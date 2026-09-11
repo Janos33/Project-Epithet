@@ -16,7 +16,6 @@ MODELS_DIR = Path(os.getenv("MODELS_DIR", "./models"))
 # --- File Paths ---
 RAW_POEMS_PATH = RAW_DATA_DIR / "poems.json"
 MEMMAP_PATH = SEMI_PROCESSED_DIR / "raw_embeddings.dat"
-EXTRACTED_COORDS_PATH = SEMI_PROCESSED_DIR / "coords.npz"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
 CLUSTERED_DATA_PATH = PROCESSED_DIR / "clustered_data.npz"
 MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"

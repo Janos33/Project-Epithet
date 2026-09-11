@@ -8,7 +8,8 @@ from dataclasses import dataclass
 
 BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 PROCESSED_DIR = BASE_DATA_DIR / "processed"
-COORDS_PATH = PROCESSED_DIR / "clustered_data.npz"
+
+CLUSTERED_DATA_PATH = PROCESSED_DIR / "clustered_data.npz"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
 CONFIG_PATH = BASE_DATA_DIR / "config"
 MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"

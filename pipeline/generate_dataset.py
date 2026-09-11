@@ -224,9 +224,6 @@ def predict(total_idx: int):
 
         print(f"[{datetime.datetime.now()}] Predicted {end_idx} / {total_idx} lines...")
 
-    print(f"Saving extracted coordinates to {EXTRACTED_COORDS_PATH}...")
-    np.savez_compressed(EXTRACTED_COORDS_PATH, coords=umap_coords)
-
     print(f"Saving clustered data to {CLUSTERED_DATA_PATH}...")
     np.savez_compressed(
         CLUSTERED_DATA_PATH, coords=umap_coords, cluster_labels=cluster_labels

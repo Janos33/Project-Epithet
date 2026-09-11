@@ -43,16 +43,14 @@ class MetadataReader:
 
 class PoemKeywordExtractor:
     def __init__(self):
-        # FIX 1: np.memmap registers the 3.05 GB file to virtual memory (0 MB physical RAM on boot)
         self.raw_embeddings = np.memmap(
             MASTER_EMBEDDINGS_PATH, dtype=np.float32, mode="r"
         ).reshape(-1, EMBEDDING_DIM)
 
-        self.cluster_labels = np.load(COORDS_PATH)["cluster_labels"]
+        self.cluster_labels = np.load(CLUSTERED_DATA_PATH)["cluster_labels"]
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
         self.emotional_embeddings = {}
 
-        # FIX 2: MetadataReader handles the NDJSON file lazily (drops 9.3 GB of dictionary overhead)
         self.metadata_reader = MetadataReader(METADATA_PATH)
 
         EMOTIONAL_ANCHORS = json.load(
