@@ -19,7 +19,7 @@ EMOTIONAL_ANCHORS_PATH = CONFIG_PATH / "emotional-anchor.json"
 # LINE_EMOTION_THRESHOLD - Minimum average emotion score for a line to be considered emotionally significant.
 # ATTENUATION_FACTOR - Weakens the influence of emotions that are below the LINE_EMOTION_THRESHOLD so words have stronger identities.
 
-LINE_EMOTION_THRESHOLD = 0.1
+LINE_EMOTION_THRESHOLD = 0.25
 ATTENUATION_FACTOR = 0.2
 EMBEDDING_DIM = 384
 

@@ -167,23 +167,22 @@ class PoetryGraphPipeline:
         similarities = util.cos_sim(keyword_vec, self.stacked_word_emotions)[0]
         return similarities.tolist()
 
-    def classify_word_emotional_tone(
-        self, text: str, line_scores: list, alpha: float = 0.2
-    ) -> list:
-        # Tweak the word's inherent emotion using the context of the line it sits in
+    def classify_word_emotional_tone(self, text: str, line_scores: list) -> list | None:
         raw_scores = self.classify_raw_word_emotional_tone(text)
         scores = []
+        has_valid_match = False
 
-        for idx, similarity in enumerate(raw_scores):
-            adjusted_score = (similarity * (1.0 - alpha)) + (line_scores[idx] * alpha)
-            scores.append(adjusted_score)
+        for word_score, line_score in zip(raw_scores, line_scores):
+            if (
+                word_score > WORD_EMOTION_THRESHOLD
+                and line_score > LINE_EMOTION_THRESHOLD
+            ):
+                scores.append((word_score + line_score) / 2.0)
+                has_valid_match = True
+            else:
+                scores.append(word_score * ATTENUATION_FACTOR)
 
-        scores = [
-            score * ATTENUATION_FACTOR if score < WORD_EMOTION_THRESHOLD else score
-            for score in scores
-        ]
-
-        return scores
+        return scores if has_valid_match else None
 
     def extract_keywords(self, doc: "spacy.tokens.Doc", line_scores: list) -> list:
         keywords = []
@@ -201,7 +200,7 @@ class PoetryGraphPipeline:
         for word_str in keywords:
             word_score = self.classify_word_emotional_tone(word_str, line_scores)
 
-            if max(word_score) > WORD_EMOTION_THRESHOLD:
+            if word_score is not None:
                 color = self.get_blended_color(word_score)
                 keyword_classifications.append(
                     {"word": word_str, "score": word_score, "color": color}

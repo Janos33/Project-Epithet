@@ -5,3 +5,5 @@ python-dotenv
 umap-learn
 hdbscan
 torch
+scikit-learn
+joblib
