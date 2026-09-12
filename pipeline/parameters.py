@@ -30,9 +30,19 @@ HDBSCAN_MODEL_PATH = MODELS_DIR / "hdbscan_model.joblib"
 LINE_LENGTH_THRESHOLD = 15
 MAX_LINE_LENGTH = 250
 WRITE_BATCH_SIZE = 2000
-WORD_EMOTION_THRESHOLD = 0.51
+
+WORD_EMOTION_THRESHOLD = 0.45
+WORD_EMOTION_ATTENUATION_THRESHOLD = 0.30
+WORD_ATTENUATION_FACTOR = 0.1
+WORD_EXCLUDE_ATTENUATION_FACTOR = 0.5
+
 LINE_EMOTION_THRESHOLD = 0.25
-ATTENUATION_FACTOR = 0.2
+LINE_EMOTION_ATTENUATION_THRESHOLD = 0.25
+LINE_ATTENUATION_FACTOR = 0.1
+LINE_EXCLUDE_ATTENUATION_FACTOR = 0.5
+
+OVERALL_SCORE_THRESHOLD = 0.4
+
 EMBEDDER_MODEL = "all-MiniLM-L6-v2"
 SPACY_MODEL = "en_core_web_sm"
 LRU_CACHE_SIZE = 10000
@@ -67,3 +77,11 @@ class HDBSCAN_parameters:
     metric = "euclidean"
     n_jobs = -1
     prediction_data = True
+
+
+# --- Load Local Parameters Override ---
+try:
+    from parameters_local import *
+except ModuleNotFoundError as error:
+    if error.name != "parameters_local":
+        raise

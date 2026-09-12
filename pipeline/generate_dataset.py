@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Note: ensure that the data here is consistent with the state that app/parameters.py will be once it is run.
+
 from parameters import *
 
 

@@ -92,8 +92,12 @@ class PoetryGraphPipeline:
                 )
                 exclude_centroid = torch.mean(exclude_embeddings, dim=0)
 
-                word_centroid = word_centroid - (0.5 * exclude_centroid)
-                line_centroid = line_centroid - (0.5 * exclude_centroid)
+                word_centroid = word_centroid - (
+                    WORD_EXCLUDE_ATTENUATION_FACTOR * exclude_centroid
+                )
+                line_centroid = line_centroid - (
+                    LINE_EXCLUDE_ATTENUATION_FACTOR * exclude_centroid
+                )
 
             word_emotional_embeddings[emotion] = torch.nn.functional.normalize(
                 word_centroid, p=2, dim=0
@@ -173,14 +177,22 @@ class PoetryGraphPipeline:
         has_valid_match = False
 
         for word_score, line_score in zip(raw_scores, line_scores):
+            was_attenuated = False
+            if word_score < WORD_EMOTION_ATTENUATION_THRESHOLD:
+                word_score *= WORD_ATTENUATION_FACTOR
+                was_attenuated = True
+
             if (
                 word_score > WORD_EMOTION_THRESHOLD
                 and line_score > LINE_EMOTION_THRESHOLD
+                and (word_score + line_score) / 2.0 > OVERALL_SCORE_THRESHOLD
             ):
                 scores.append((word_score + line_score) / 2.0)
                 has_valid_match = True
             else:
-                scores.append(word_score * ATTENUATION_FACTOR)
+                if not was_attenuated:
+                    word_score *= WORD_ATTENUATION_FACTOR
+                scores.append(word_score)
 
         return scores if has_valid_match else None
 
@@ -354,7 +366,9 @@ class PoetryGraphPipeline:
                 zip(processed_lines, line_embeddings, batch_similarities)
             ):
                 line_score = [
-                    s * ATTENUATION_FACTOR if s < LINE_EMOTION_THRESHOLD else s
+                    s * LINE_ATTENUATION_FACTOR
+                    if s < LINE_EMOTION_ATTENUATION_THRESHOLD
+                    else s
                     for s in raw_scores.tolist()
                 ]
 
@@ -437,7 +451,6 @@ class PoetryGraphPipeline:
 
 def main():
     load_dotenv()
-
     pipeline = PoetryGraphPipeline()
 
     print("Connecting to Neo4j...")

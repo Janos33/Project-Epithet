@@ -100,7 +100,9 @@ class PoemKeywordExtractor:
                 scores.append(similarity)
 
             scores = [
-                score * ATTENUATION_FACTOR if score < LINE_EMOTION_THRESHOLD else score
+                score * LINE_ATTENUATION_FACTOR
+                if score < LINE_EMOTION_ATTENUATION_THRESHOLD
+                else score
                 for score in scores
             ]
 

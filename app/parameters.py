@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 from dataclasses import dataclass
 
-# Note: ensure that the data here is consistent with the state that pipeline/parameters.py was in when the pipeline was last run.
-
 # --- Paths ---
 
 BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
@@ -19,8 +17,9 @@ EMOTIONAL_ANCHORS_PATH = CONFIG_PATH / "emotional-anchor.json"
 # LINE_EMOTION_THRESHOLD - Minimum average emotion score for a line to be considered emotionally significant.
 # ATTENUATION_FACTOR - Weakens the influence of emotions that are below the LINE_EMOTION_THRESHOLD so words have stronger identities.
 
-LINE_EMOTION_THRESHOLD = 0.25
-ATTENUATION_FACTOR = 0.2
+LINE_EXCLUDE_ATTENUATION_FACTOR = 0.5
+LINE_EMOTION_ATTENUATION_THRESHOLD = 0.25
+LINE_ATTENUATION_FACTOR = 0.1
 EMBEDDING_DIM = 384
 
 # --- Dataclass for forwarding weights ---
@@ -33,3 +32,11 @@ class Weights:
     context_line_amount: int
     neighborhood_amount: int
     max_results: int
+
+
+# --- Load Local Parameters Override ---
+try:
+    from parameters_local import *
+except ModuleNotFoundError as error:
+    if error.name != "parameters_local":
+        raise
