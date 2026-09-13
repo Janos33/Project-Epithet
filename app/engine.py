@@ -317,6 +317,7 @@ class PoemKeywordExtractor:
                         "word": word_text,
                         "color": keyword["color"],
                         "score": final_score,
+                        "inverseFrequency": keyword["inverseFrequency"],
                     }
 
         ranked_keywords = list(best_keywords.values())

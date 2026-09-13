@@ -44,18 +44,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const word = item.word !== undefined ? item.word : Array.isArray(item) ? item[0] : item;
             const score = item.score !== undefined ? item.score : Array.isArray(item) ? item[1] : 0;
+            const inverseFrequency =
+              item.inverseFrequency !== undefined
+                ? item.inverseFrequency
+                : Array.isArray(item)
+                  ? item[1]
+                  : 0;
 
             if (item.color) {
               card.style.setProperty("--card-accent", item.color);
               card.style.backgroundColor = item.color;
             }
 
+            let rarityCategory = "???";
+
+            if (inverseFrequency < 8) {
+              rarityCategory = "Very common";
+            } else if (inverseFrequency < 11) {
+              rarityCategory = "Common";
+            } else if (inverseFrequency < 13) {
+              rarityCategory = "Rare";
+            } else {
+              rarityCategory = "Very rare";
+            }
+
             card.innerHTML = `
-              <div class="keyword-header">
-                <h3 class="keyword-text">${word}</h3>
+            <h3 class="keyword-text">${word}</h3>
+            <div class="hover-details">
+              <div>
+              <span>${(score * 100).toFixed(2)}% match</span>
               </div>
-              <p class="keyword-score">Score: ${Number(score).toFixed(3)}</p>
-            `;
+              <div>
+              <span>${rarityCategory} word</span>
+              </div>
+            </div>
+          `;
             resultsGrid.appendChild(card);
           });
         } else {
@@ -137,21 +160,21 @@ document.addEventListener("DOMContentLoaded", () => {
       formId: "form-granularity-slider",
       displayId: "line-value-display",
       storageKey: "epithet_find_slider",
-      formatDisplay: (val) => ` ${100 - val}% specific words, ${val}% broader themes`
+      formatDisplay: (val) => ` ${100 - val}%  individual words, ${val}% similar contexts`
     },
     {
       modalId: "context-slider",
       formId: "form-context-slider",
       displayId: "context-value-display",
       storageKey: "epithet_context_slider",
-      formatDisplay: (val) => `${val} Lines`
+      formatDisplay: (val) => `${val} Matches`
     },
     {
       modalId: "connections-slider",
       formId: "form-connections-slider",
       displayId: "connections-value-display",
       storageKey: "epithet_connections_slider",
-      formatDisplay: (val) => `${val} Nodes`
+      formatDisplay: (val) => `${val} Topics`
     },
     {
       modalId: "results-slider",
@@ -193,29 +216,25 @@ document.addEventListener("DOMContentLoaded", () => {
       emotional_weight: 60,
       theme_weight: 85,
       context_depth: 10,
-      max_connections: 40,
-      max_results: 20
+      max_connections: 40
     },
     literal: {
       emotional_weight: 40,
-      theme_weight: 70,
+      theme_weight: 100,
       context_depth: 5,
-      max_connections: 10,
-      max_results: 20
+      max_connections: 10
     },
     subtle: {
       emotional_weight: 60,
-      theme_weight: 100,
+      theme_weight: 70,
       context_depth: 35,
-      max_connections: 60,
-      max_results: 40
+      max_connections: 60
     },
     feel: {
       emotional_weight: 80,
-      theme_weight: 90,
+      theme_weight: 80,
       context_depth: 20,
-      max_connections: 100,
-      max_results: 40
+      max_connections: 100
     }
   };
 
@@ -234,7 +253,6 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("line-slider").value = config.theme_weight;
       document.getElementById("context-slider").value = config.context_depth;
       document.getElementById("connections-slider").value = config.max_connections;
-      document.getElementById("results-slider").value = config.max_results;
 
       const sliderIds = [
         "emotional-slider",

@@ -109,7 +109,7 @@
             <input
               type="text"
               id="author_name"
-              placeholder="Write the name of the author here"
+              placeholder="Name of person, character, or subject..."
               class="sync-input"
               maxlength="75"
             />
@@ -118,7 +118,7 @@
             <textarea
               id="poem_text"
               rows="12"
-              placeholder="Paste your poems here..."
+              placeholder="And then paste something they wrote or said here...&#10;(Tip: More text yields better results — aim for 40+ lines or 600+ characters)"
               maxlength="25000"
               class="sync-input"
               autofocus
@@ -133,8 +133,8 @@
               type="range"
               id="form-closeness-slider"
               name="emotional_weight"
-              min="0"
-              max="100"
+              min="5"
+              max="95"
               value="60"
               step="5"
               hidden
@@ -208,18 +208,13 @@
         <div class="modal-body">
           <p>
             Discover the words that define your writing. <strong>Project Epithet</strong> is a
-            graph-based NLP engine that attempts to describe you based on your work, and also
-            compare you to others.
+            graph-based NLP engine that attempts to describe you based on your work.
           </p>
           <p>
             The poems are processed entirely within your browser using decentralized client-side
             statistical processing. Because your text is converted into abstract numerical
-            embeddings locally on your own device, the raw poetry or prose you write is never sent
-            across the internet or stored on external servers, ensuring complete privacy and data
-            anonymity.
-          </p>
-          <p>
-            <a href="https://github.com/Janos33/Epithet">Github link</a>
+            embeddings locally on your own device, the raw text you write is never sent across the
+            internet or stored on external servers, ensuring complete privacy and data anonymity.
           </p>
           <p>
             <a href="https://huggingface.co/datasets/DanFosing/public-domain-poetry"
@@ -264,14 +259,14 @@
               </div>
 
               <!-- Slider 1 -->
-              <label class="setting-label">The engine should aim for:</label>
+              <label class="setting-label">What should the analysis focus on?</label>
               <div class="two-sided-slider-container">
                 <span class="slider-end-label" id="slider-end-label-literal">Literal meaning</span>
                 <input
                   type="range"
                   id="emotional-slider"
-                  min="0"
-                  max="100"
+                  min="5"
+                  max="95"
                   step="5"
                   value="60"
                   class="custom-slider"
@@ -283,9 +278,11 @@
               <div id="emotional-value-display" class="slider-under-label">60%</div>
 
               <!-- Slider 2 -->
-              <label class="setting-label">The engine should try to find:</label>
+              <label class="setting-label">What should it try to find?</label>
               <div class="two-sided-slider-container">
-                <span class="slider-end-label" id="slider-end-label-words">Wording</span>
+                <span class="slider-end-label" id="slider-end-label-words"
+                  >Similar individual words</span
+                >
                 <input
                   type="range"
                   id="line-slider"
@@ -295,14 +292,18 @@
                   value="85"
                   class="custom-slider"
                 />
-                <span class="slider-end-label" id="slider-end-label-themes">Broader themes</span>
+                <span class="slider-end-label" id="slider-end-label-themes"
+                  >Words from similar contexts</span
+                >
               </div>
               <div id="line-value-display" class="slider-under-label">85%</div>
 
               <!-- Slider 3 -->
-              <label class="setting-label">How far should the engine look for context?</label>
+              <label class="setting-label">What kind of search would you prefer?</label>
               <div class="two-sided-slider-container">
-                <span class="slider-end-label" id="slider-end-label-narrow">Narrow</span>
+                <span class="slider-end-label" id="slider-end-label-narrow"
+                  >Strict (Best matches only)</span
+                >
                 <input
                   type="range"
                   id="context-slider"
@@ -312,16 +313,18 @@
                   value="10"
                   class="custom-slider"
                 />
-                <span class="slider-end-label" id="slider-end-label-wide">Wide</span>
+                <span class="slider-end-label" id="slider-end-label-wide"
+                  >Loose (Broader inspiration)</span
+                >
               </div>
               <div id="context-value-display" class="slider-under-label">10 Lines</div>
 
               <!-- Slider 4 -->
-              <label class="setting-label"
-                >How many thematic connections should the engine consider?</label
-              >
+              <label class="setting-label">How much variety should the keyword themes have?</label>
               <div class="two-sided-slider-container">
-                <span class="slider-end-label" id="slider-end-label-few">Few</span>
+                <span class="slider-end-label" id="slider-end-label-few"
+                  >Highly Focused (Fewer topics)</span
+                >
                 <input
                   type="range"
                   id="connections-slider"
@@ -331,9 +334,11 @@
                   value="40"
                   class="custom-slider"
                 />
-                <span class="slider-end-label" id="slider-end-label-many">Many</span>
+                <span class="slider-end-label" id="slider-end-label-many"
+                  >Widely Varied (More topics)</span
+                >
               </div>
-              <div id="connections-value-display" class="slider-under-label">40 Nodes</div>
+              <div id="connections-value-display" class="slider-under-label">40 Topics</div>
 
               <!-- Slider 5 -->
               <label class="setting-label">How many keywords would you like to get?</label>

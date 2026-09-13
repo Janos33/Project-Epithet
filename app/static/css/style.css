@@ -248,29 +248,65 @@ button[type="submit"]:hover,
 }
 
 .keyword-card {
-  background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)),
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.2)),
     var(--card-accent, var(--card-fallback));
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 22px 18px;
-  min-height: 140px;
-  box-shadow: 0 4px 12px var(--shadow-soft);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 16px;
+  min-height: 110px;
+
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
     border-color 0.2s ease;
-  color: var(--text-secondary);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  -webkit-font-smoothing: antialiased;
+  cursor: pointer;
 }
 
 .keyword-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 20px var(--shadow-soft);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+.keyword-text {
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-primary, #fff);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  margin: 0;
+  transition: transform 0.2s ease; /* Added base transition so it un-shifts smoothly */
+}
+
+.keyword-card:hover .keyword-text {
+  transform: translateY(-7px);
+}
+
+.hover-details {
+  position: absolute;
+  bottom: 12px;
+  font-size: 0.75rem; /* Scaled up slightly for better single-line readability */
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap; /* Prevents text wrapping on narrow cards */
+  pointer-events: none;
+}
+
+.keyword-card:hover .hover-details {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .keyword-header {
@@ -313,39 +349,43 @@ button[type="submit"]:hover,
   margin-bottom: 25px;
 }
 
+/* =========================================
+   SCALED DOWN MODAL SECTION (Reduced 1.5x)
+   ========================================= */
+
 .modal-dialog {
-  border: 1.5px solid var(--accent-gold);
-  border-radius: 12px;
+  border: 1px solid var(--accent-gold);
+  border-radius: 8px;
   background-color: var(--card-bg);
   color: var(--text-secondary);
   padding: 0;
-  max-width: 750px;
+  max-width: 700px;
   width: 90%;
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 /* Backdrop Dimming */
 .modal-dialog::backdrop {
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4.5px);
+  backdrop-filter: blur(3px);
 }
 
 .modal-content {
-  padding: 36px;
+  padding: 24px;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center; /* This vertically centers the title and the 'x' */
-  border-bottom: 1.5px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 18px;
-  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 2.1em;
+  font-size: 1.4em;
   color: var(--accent-gold);
 }
 
@@ -353,9 +393,9 @@ button[type="submit"]:hover,
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 2.25rem;
+  font-size: 1.5rem;
   line-height: 1;
-  padding: 6px 12px;
+  padding: 4px 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -368,15 +408,15 @@ button[type="submit"]:hover,
 
 .modal-body p {
   margin-top: 0;
-  margin-bottom: 18px;
-  font-size: 1.5em;
+  margin-bottom: 12px;
+  font-size: 1em;
   line-height: 1.6;
 }
 
 .modal-body a {
   color: var(--accent-gold);
   text-decoration: underline;
-  font-size: 1.5em;
+  font-size: 1em;
 }
 
 .modal-body a:hover {
@@ -386,21 +426,21 @@ button[type="submit"]:hover,
 .setting-group {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  margin-top: 15px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .setting-label {
   font-weight: bold;
   color: var(--accent-gold);
-  font-size: 1.425em;
+  font-size: 0.95em;
 }
 
 .one-sided-slider-container {
   display: grid;
   grid-template-columns: 1fr 2fr;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -408,12 +448,12 @@ button[type="submit"]:hover,
   display: grid;
   grid-template-columns: 2fr 3fr 2fr;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   width: 100%;
 }
 
 .slider-end-label {
-  font-size: 1.275em;
+  font-size: 0.85em;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -423,11 +463,11 @@ button[type="submit"]:hover,
 }
 
 .slider-under-label {
-  font-size: 1.275em;
+  font-size: 0.85em;
   color: var(--text-muted);
   white-space: nowrap;
   text-align: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   font-weight: bold;
 }
 
@@ -435,22 +475,22 @@ button[type="submit"]:hover,
   width: 100%;
   -webkit-appearance: none;
   appearance: none;
-  height: 9px;
-  border-radius: 4.5px;
+  height: 6px;
+  border-radius: 3px;
   background: var(--primary-brown);
   outline: none;
-  border: 1.5px solid var(--border-color);
+  border: 1px solid var(--border-color);
 }
 
 /* Custom Thumb Styling for Webkit (Chrome/Safari/Edge) */
 .custom-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 27px;
-  height: 27px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   cursor: pointer;
-  border: 3px solid var(--text-main);
+  border: 2px solid var(--text-main);
   transition: transform 0.1s ease;
 }
 
@@ -458,7 +498,7 @@ button[type="submit"]:hover,
   display: flex;
   flex-wrap: wrap; /* Allows buttons to wrap on smaller screens */
   gap: 10px;
-  margin-top: 25px; /* Adds space above the presets */
+  margin-top: 20px; /* Adds space above the presets */
   justify-content: center; /* Centers the buttons horizontally */
 }
 
@@ -466,7 +506,7 @@ button[type="submit"]:hover,
   background: transparent;
   color: var(--accent-gold);
   border: 1px solid var(--accent-gold);
-  padding: 10px 15px;
+  padding: 8px 12px;
   border-radius: 4px;
   font-size: 0.9em;
   font-weight: normal;
@@ -493,11 +533,11 @@ button[type="submit"]:hover,
 }
 
 .custom-slider::-moz-range-thumb {
-  width: 27px;
-  height: 27px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   cursor: pointer;
-  border: 3px solid var(--text-main);
+  border: 2px solid var(--text-main);
   transition: transform 0.1s ease;
 }
 
