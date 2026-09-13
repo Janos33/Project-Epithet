@@ -49,7 +49,6 @@ class PoemKeywordExtractor:
 
         self.cluster_labels = np.load(CLUSTERED_DATA_PATH)["cluster_labels"]
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
-        self.emotional_embeddings = {}
 
         self.metadata_reader = MetadataReader(METADATA_PATH)
 
@@ -59,11 +58,32 @@ class PoemKeywordExtractor:
 
         emotions_dict = EMOTIONAL_ANCHORS.get("emotions", EMOTIONAL_ANCHORS)
 
-        for emotion, details in emotions_dict.items():
-            words = details["words"] if isinstance(details, dict) else details
+        self.line_emotional_embeddings = {}
+        self.color_map = {}
 
-            word_embeddings = self.embedder.encode(words, convert_to_tensor=True)
-            self.emotional_embeddings[emotion] = torch.mean(word_embeddings, dim=0)
+        for emotion, details in emotions_dict.items():
+            lines = details.get("lines", []) if isinstance(details, dict) else []
+            excludes = details.get("excludes", []) if isinstance(details, dict) else []
+
+            if isinstance(details, dict) and "color" in details:
+                self.color_map[emotion] = details["color"]
+
+            line_embeddings = self.embedder.encode(lines, convert_to_tensor=True)
+            line_centroid = torch.mean(line_embeddings, dim=0)
+
+            if excludes:
+                exclude_embeddings = self.embedder.encode(
+                    excludes, convert_to_tensor=True
+                )
+                exclude_centroid = torch.mean(exclude_embeddings, dim=0)
+
+                line_centroid = line_centroid - (
+                    LINE_EXCLUDE_ATTENUATION_FACTOR * exclude_centroid
+                )
+
+            self.line_emotional_embeddings[emotion] = torch.nn.functional.normalize(
+                line_centroid, p=2, dim=0
+            )
 
     def process_poem(
         self,
@@ -95,7 +115,7 @@ class PoemKeywordExtractor:
 
             scores = []
 
-            for emotion, category_vec in self.emotional_embeddings.items():
+            for emotion, category_vec in self.line_emotional_embeddings.items():
                 similarity = util.cos_sim(keyword_vec, category_vec).item()
                 scores.append(similarity)
 
@@ -208,6 +228,20 @@ class PoemKeywordExtractor:
         for cluster_id, sim_list in cluster_similarity_lists.items():
             cluster_semantic_profiles[cluster_id] = np.mean(sim_list)
 
+        # --- Normalize Cluster Semantic Profiles (Min-Max Scaling to [0, 1]) ---
+        if cluster_semantic_profiles:
+            sem_min = min(cluster_semantic_profiles.values())
+            sem_max = max(cluster_semantic_profiles.values())
+            if sem_max > sem_min:
+                cluster_semantic_profiles = {
+                    cid: (val - sem_min) / (sem_max - sem_min)
+                    for cid, val in cluster_semantic_profiles.items()
+                }
+            else:
+                cluster_semantic_profiles = {
+                    cid: 1.0 for cid in cluster_semantic_profiles
+                }
+
         # 3. Rank lines based on their composite scores
         best_keywords = {}
 
@@ -221,6 +255,17 @@ class PoemKeywordExtractor:
                 continue
 
             line_scores_arr = np.array(line_scores)
+
+            # --- Normalize Line Emotional Scores (Min-Max Scaling to [0, 1]) ---
+            line_min_val = np.min(line_scores_arr)
+            line_max_val = np.max(line_scores_arr)
+            if line_max_val > line_min_val:
+                line_scores_arr = (line_scores_arr - line_min_val) / (
+                    line_max_val - line_min_val
+                )
+            else:
+                line_scores_arr = np.zeros_like(line_scores_arr)
+
             cluster_profile_arr = cluster_emotional_profiles[cluster_id]
 
             # --- Line Emotional Closeness ---
@@ -228,13 +273,23 @@ class PoemKeywordExtractor:
             line_emotional_closeness = 1.0 / (1.0 + emo_distance)
 
             # --- Cluster Semantics Closeness ---
-            cluster_semantic_closeness = cluster_semantic_profiles.get(cluster_id)
+            cluster_semantic_closeness = cluster_semantic_profiles.get(cluster_id, 0.0)
 
             # --- WORD SCORE CALCULATION  ---
 
             for keyword in keywords:
                 word_scores = keyword.get("score")
                 word_scores_arr = np.array(word_scores)
+
+                # --- Normalize Word Emotional Scores (Min-Max Scaling to [0, 1]) ---
+                word_min_val = np.min(word_scores_arr)
+                word_max_val = np.max(word_scores_arr)
+                if word_max_val > word_min_val:
+                    word_scores_arr = (word_scores_arr - word_min_val) / (
+                        word_max_val - word_min_val
+                    )
+                else:
+                    word_scores_arr = np.zeros_like(word_scores_arr)
 
                 # --- Word Emotional Closeness ---
                 word_emo_distance = np.linalg.norm(
