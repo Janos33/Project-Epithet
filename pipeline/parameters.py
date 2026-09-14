@@ -47,6 +47,8 @@ EMBEDDER_MODEL = "all-MiniLM-L6-v2"
 SPACY_MODEL = "en_core_web_sm"
 LRU_CACHE_SIZE = 10000
 
+WORD_DELETE_THRESHOLD = 10
+
 # --- Generate Dataset Parameters ---
 READ_BATCH_SIZE = 50000
 SKIP = 0

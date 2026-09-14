@@ -7,3 +7,4 @@ hdbscan
 torch
 scikit-learn
 joblib
+better-profanity

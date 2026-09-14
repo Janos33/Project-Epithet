@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from neo4j import GraphDatabase, Driver
 from sentence_transformers import SentenceTransformer, util
 from functools import lru_cache
+from better_profanity import profanity
 import spacy
 import torch
 from parameters import *
@@ -205,6 +206,7 @@ class PoetryGraphPipeline:
                 token.pos_ in {"NOUN", "ADJ", "VERB", "ADV"}
                 and not token.is_stop
                 and token.is_alpha
+                and not profanity.contains_profanity(token.lemma_.lower())
             ):
                 keywords.append(token.lemma_.lower())
 
@@ -221,7 +223,7 @@ class PoetryGraphPipeline:
         return keyword_classifications
 
     def get_blended_color(
-        self, scores: list, top_k: int = 4, power: float = 4.0
+        self, scores: list, top_k: int = 4, power: float = 1.5
     ) -> str:
         # Takes the top scoring emotions and mixes their hex colors based on their relative strength
         scores = np.array(scores, dtype=float)
@@ -430,6 +432,29 @@ class PoetryGraphPipeline:
                 current_batch, session, counter, total_lines_ingested
             )
 
+    def delete_keywords(self, session: neo4j.Session):
+        query = """
+            MATCH (n)-[:HAS_KEYWORD]->(k:PoemKeyword)
+            WITH k, count(n) AS frequency
+            WHERE frequency <= $threshold
+            WITH k
+            DETACH DELETE k
+            RETURN count(*) AS deleted
+        """
+
+        session.run(query, threshold=WORD_DELETE_THRESHOLD)
+
+    def delete_orphaned_lines(self, session: neo4j.Session):
+        query = """
+            MATCH (n:Line)
+            WHERE NOT (n)-[:HAS_KEYWORD]->(:PoemKeyword)
+            WITH n
+            DETACH DELETE n
+            RETURN count(*) AS deleted
+        """
+
+        session.run(query)
+
     def add_frequency_to_keywords(self, session: neo4j.Session):
         # Calculates a TF-IDF style metric so we know which keywords are rare/valuable vs common
         query = """
@@ -459,6 +484,9 @@ def main():
             print("Creating indexes and constraints...")
             pipeline.create_indexes(session)
             pipeline.ingest_data(session)
+            print("Deleting rare keywords and connected lines...")
+            pipeline.delete_keywords(session)
+            pipeline.delete_orphaned_lines(session)
             print("Adding frequency ratios to keywords...")
             pipeline.add_frequency_to_keywords(session)
 
