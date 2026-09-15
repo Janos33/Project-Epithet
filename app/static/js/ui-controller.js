@@ -215,26 +215,26 @@ document.addEventListener("DOMContentLoaded", () => {
     default: {
       emotional_weight: 60,
       theme_weight: 85,
-      context_depth: 10,
-      max_connections: 40
+      context_depth: 500,
+      max_connections: 1000
     },
     literal: {
       emotional_weight: 40,
       theme_weight: 100,
-      context_depth: 5,
-      max_connections: 10
+      context_depth: 100,
+      max_connections: 200
     },
     subtle: {
       emotional_weight: 60,
       theme_weight: 70,
-      context_depth: 35,
-      max_connections: 60
+      context_depth: 750,
+      max_connections: 1500
     },
     feel: {
       emotional_weight: 80,
       theme_weight: 80,
-      context_depth: 20,
-      max_connections: 100
+      context_depth: 1000,
+      max_connections: 2000
     }
   };
 
