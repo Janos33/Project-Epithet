@@ -4,7 +4,7 @@ FROM python:3.11-slim
 
 WORKDIR /code
 
-ENV FLASK_APP=init.py
+ENV FLASK_APP=main.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
 COPY requirements.txt .

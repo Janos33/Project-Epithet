@@ -51,11 +51,10 @@ services:
   app:
     build:
       context: ./app
-    command: python main.py
+    command: gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 4 main:app
     restart: unless-stopped
-    network_mode: "host"
     ports:
-      - "${APP_PORT:-8000}:5000"
+      - "127.0.0.1:5000:5000"
     volumes:
       - ./data:/code/data
     develop:
