@@ -16,6 +16,8 @@
   --card-fallback: #e0e0e0;
 }
 
+/* ---------- Base ---------- */
+
 html {
   scrollbar-gutter: stable;
   overflow-y: scroll;
@@ -71,6 +73,8 @@ p.subtitle {
   border: 0;
 }
 
+/* ---------- App window ---------- */
+
 .app-window {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
@@ -84,6 +88,7 @@ p.subtitle {
   padding: 70px 40px 40px 40px;
 }
 
+/* Title bar */
 .app-window::before {
   content: "";
   position: absolute;
@@ -131,6 +136,8 @@ form.app-form {
   margin-left: auto;
 }
 
+/* ---------- Form ---------- */
+
 .form-container {
   width: 100%;
   max-width: 700px;
@@ -176,11 +183,17 @@ textarea.sync-input {
   width: 100%;
 }
 
+/* ---------- Buttons ---------- */
+
 button,
 .window-icon-btn {
   font-family: inherit;
   cursor: pointer;
   transition: all 0.3s ease;
+
+  /* No blue tap flash or double-tap delay on touch screens */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button {
@@ -203,13 +216,6 @@ button[type="submit"],
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
-button[type="submit"]:hover,
-.primary-submit-btn:hover {
-  background: linear-gradient(135deg, var(--button-hover-start), var(--primary-brown));
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
 .window-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -224,6 +230,11 @@ button[type="submit"]:hover,
   font-size: 1rem;
   z-index: 2;
   padding: 0;
+
+  /* Short transition so the pressed state doesn't linger */
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .window-icon-btn svg {
@@ -234,10 +245,39 @@ button[type="submit"]:hover,
   stroke: currentColor;
 }
 
-.window-icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
+/* Mouse-only hover: touch screens keep hover "stuck" after a tap */
+@media (hover: hover) {
+  button[type="submit"]:hover,
+  .primary-submit-btn:hover {
+    background: linear-gradient(135deg, var(--button-hover-start), var(--primary-brown));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .window-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .preset-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    color: var(--text-secondary);
+    border-color: var(--text-secondary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
 }
+
+.window-icon-btn:active {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Keep the focus ring for keyboard users only */
+.window-icon-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---------- Keyword cards ---------- */
 
 .keyword-grid {
   display: grid;
@@ -283,7 +323,7 @@ button[type="submit"]:hover,
   color: var(--text-primary, #fff);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   margin: 0;
-  transition: transform 0.2s ease; /* Added base transition so it un-shifts smoothly */
+  transition: transform 0.2s ease;
 }
 
 .keyword-card:hover .keyword-text {
@@ -293,14 +333,14 @@ button[type="submit"]:hover,
 .hover-details {
   position: absolute;
   bottom: 12px;
-  font-size: 0.75rem; /* Scaled up slightly for better single-line readability */
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   opacity: 0;
   transform: translateY(6px);
   transition: all 0.2s ease;
   color: rgba(255, 255, 255, 0.75);
-  white-space: nowrap; /* Prevents text wrapping on narrow cards */
+  white-space: nowrap;
   pointer-events: none;
 }
 
@@ -315,6 +355,7 @@ button[type="submit"]:hover,
   align-items: flex-start;
 }
 
+/* Overrides the earlier .keyword-text values above */
 .keyword-text {
   font-size: 1.25em;
   font-weight: bold;
@@ -349,9 +390,7 @@ button[type="submit"]:hover,
   margin-bottom: 25px;
 }
 
-/* =========================================
-   SCALED DOWN MODAL SECTION (Reduced 1.5x)
-   ========================================= */
+/* ---------- Settings modal ---------- */
 
 .modal-dialog {
   border: 1px solid var(--accent-gold);
@@ -359,12 +398,15 @@ button[type="submit"]:hover,
   background-color: var(--card-bg);
   color: var(--text-secondary);
   padding: 0;
+  box-sizing: border-box;
   max-width: 700px;
   width: 90%;
+  max-height: calc(100dvh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* Backdrop Dimming */
 .modal-dialog::backdrop {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(3px);
@@ -377,7 +419,7 @@ button[type="submit"]:hover,
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center; /* This vertically centers the title and the 'x' */
+  align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 12px;
   margin-bottom: 16px;
@@ -436,6 +478,8 @@ button[type="submit"]:hover,
   font-size: 0.95em;
 }
 
+/* ---------- Sliders ---------- */
+
 .one-sided-slider-container {
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -482,7 +526,6 @@ button[type="submit"]:hover,
   border: 1px solid var(--border-color);
 }
 
-/* Custom Thumb Styling for Webkit (Chrome/Safari/Edge) */
 .custom-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -491,15 +534,34 @@ button[type="submit"]:hover,
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid var(--text-main);
+  background: var(--accent-gold);
   transition: transform 0.1s ease;
 }
 
-.preset-container {
+.custom-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--text-main);
+  background: var(--accent-gold);
+  transition: transform 0.1s ease;
+}
+
+.custom-slider::-webkit-slider-thumb:hover,
+.custom-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* ---------- Presets ---------- */
+
+.preset-container,
+.preset-buttons {
   display: flex;
-  flex-wrap: wrap; /* Allows buttons to wrap on smaller screens */
+  flex-wrap: wrap;
   gap: 10px;
-  margin-top: 20px; /* Adds space above the presets */
-  justify-content: center; /* Centers the buttons horizontally */
+  margin-top: 20px;
+  justify-content: center;
 }
 
 .preset-btn {
@@ -517,14 +579,6 @@ button[type="submit"]:hover,
   box-shadow: none;
 }
 
-.preset-btn:hover {
-  background: rgba(212, 175, 55, 0.1); /* Subtle gold background on hover */
-  color: var(--text-secondary);
-  border-color: var(--text-secondary);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
 .char-counter {
   font-size: 0.9em;
   color: var(--text-muted);
@@ -532,16 +586,166 @@ button[type="submit"]:hover,
   margin-top: 5px;
 }
 
-.custom-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid var(--text-main);
-  transition: transform 0.1s ease;
+/* =========================================================
+   RESPONSIVE (keep at the end of the file)
+   ========================================================= */
+
+/* Tablets, phones, and any short landscape screen.
+   !important and the "html body" prefix beat the base grid rules. */
+@media (max-width: 950px), (orientation: landscape) and (max-height: 600px) {
+  /* Single column: labels on top, slider below */
+  html body .two-sided-slider-container {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    align-items: stretch !important;
+    justify-items: stretch !important;
+    gap: 8px !important;
+
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html body .two-sided-slider-container .slider-end-label {
+    grid-column: 1 !important;
+    width: 100%;
+    text-align: left !important;
+    white-space: normal !important;
+    padding-left: 5px;
+  }
+
+  html body .two-sided-slider-container .slider-end-label:first-of-type {
+    grid-row: 1 !important;
+  }
+
+  html body .two-sided-slider-container .slider-end-label:last-of-type {
+    grid-row: 2 !important;
+  }
+
+  html body .two-sided-slider-container .slider-end-label:first-of-type::before {
+    content: "Left: ";
+    font-weight: bold;
+    color: var(--accent-gold);
+  }
+
+  html body .two-sided-slider-container .slider-end-label:last-of-type::before {
+    content: "Right: ";
+    font-weight: bold;
+    color: var(--accent-gold);
+  }
+
+  /* Square slider; the border is an inset shadow so it fits its container exactly */
+  html body .two-sided-slider-container .custom-slider {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+
+    display: block;
+    box-sizing: border-box;
+    width: 100% !important;
+    min-width: 0;
+    height: 23px;
+    margin: 8px 0 !important;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+
+    -webkit-appearance: none;
+    appearance: none;
+
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 0 1px var(--text-main);
+  }
+
+  .two-sided-slider-container .custom-slider::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    height: 23px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .two-sided-slider-container .custom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 23px;
+    height: 23px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--accent-gold);
+    cursor: pointer;
+  }
+
+  .two-sided-slider-container .custom-slider::-moz-range-track {
+    height: 23px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .two-sided-slider-container .custom-slider::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 23px;
+    height: 23px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--accent-gold);
+    cursor: pointer;
+  }
+
+  /* Presets stacked top to bottom */
+  .preset-container,
+  .preset-buttons {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .preset-btn {
+    width: 100%;
+  }
 }
 
-.custom-slider::-webkit-slider-thumb:hover,
-.custom-slider::-moz-range-thumb:hover {
-  transform: scale(1.15);
+/* Portrait phones: tighter page spacing */
+@media (max-width: 650px) {
+  body {
+    padding: 20px 10px;
+  }
+
+  .app-window {
+    padding: 65px 20px 30px 20px;
+  }
+
+  textarea.sync-input {
+    height: 250px;
+  }
+
+  /* Settings modal: fit the narrow screen */
+  .modal-dialog {
+    width: calc(100vw - 20px);
+  }
+
+  .modal-content {
+    padding: 16px;
+  }
+
+  .slider-end-label,
+  .slider-under-label {
+    white-space: normal;
+  }
+
+  .one-sided-slider-container > * {
+    min-width: 0;
+  }
 }
