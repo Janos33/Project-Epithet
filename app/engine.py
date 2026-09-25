@@ -1,6 +1,5 @@
 import json
 import numpy as np
-import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
@@ -12,13 +11,13 @@ class MetadataReader:
     """
     Builds a tiny byte-index of the dataset on boot.
     Allows the engine to instantly grab specific lines from the hard drive
-    without loading all 2.1+ million JSON dictionaries into RAM.
+    without loading all JSON dictionaries into RAM.
     """
 
     def __init__(self, filepath):
         self.filepath = filepath
         self.line_offsets = []
-        print("Building ultra-fast disk index for metadata...")
+        print("Building disk index for metadata...")
 
         # Read the file purely as bytes to find where each line starts
         with open(filepath, "rb") as f:
@@ -61,6 +60,7 @@ class PoemKeywordExtractor:
         self.line_emotional_embeddings = {}
         self.color_map = {}
 
+        # Calculate emotional centroids for each category, attenuating based on exclude lists
         for emotion, details in emotions_dict.items():
             lines = details.get("lines", []) if isinstance(details, dict) else []
             excludes = details.get("excludes", []) if isinstance(details, dict) else []
@@ -90,35 +90,31 @@ class PoemKeywordExtractor:
         poem_embeddings: list[torch.Tensor],
         k: int = 15,
     ) -> tuple[list[int], list[dict]]:
-        # 1. Convert the incoming list of lists from JavaScript into a 2D NumPy array
+        # Convert input embeddings to a 2D NumPy array
         poem_embeddings_np = np.array(poem_embeddings, dtype=np.float32)
 
-        # 2. Compare the client embeddings against your master dataset
+        # Compare the client embeddings against the master dataset
         similarity_matrix = cosine_similarity(poem_embeddings_np, self.raw_embeddings)
 
         poem_matching_records = []
         valid_clusters_set = set()
 
-        # 3. Iterate directly over the embeddings, NOT the text lines
+        # Iterate directly over the embeddings, NOT the text lines
         for i, embedding in enumerate(poem_embeddings):
-            # Get the indices of the top K closest master lines
             top_k_indices = np.argsort(similarity_matrix[i])[-k:][::-1]
-
-            # Look up which clusters those master lines belong to
             neighbor_clusters = self.cluster_labels[top_k_indices]
 
             # Filter out noise (-1) from the clusters
             valid_neighbor_clusters = [c for c in neighbor_clusters if c != -1]
 
-            # Find emotion of line:.
             keyword_vec = torch.tensor(embedding)
-
             scores = []
 
             for emotion, category_vec in self.line_emotional_embeddings.items():
                 similarity = util.cos_sim(keyword_vec, category_vec).item()
                 scores.append(similarity)
 
+            # Apply attenuation to lower scores to penalize weak emotional matches
             scores = [
                 score * LINE_ATTENUATION_FACTOR
                 if score < LINE_EMOTION_ATTENUATION_THRESHOLD
@@ -142,7 +138,7 @@ class PoemKeywordExtractor:
         """
         Step 3: Track, rank, filter neighborhoods, and extract matching master rows vectorially.
         """
-        # 1. TRACKING: Aggregate hits and similarity scores for each cluster
+        # TRACKING: Aggregate hits and similarity scores for each cluster
         cluster_stats = defaultdict(lambda: {"hit_count": 0, "total_similarity": 0.0})
 
         for record in poem_metadata:
@@ -155,7 +151,7 @@ class PoemKeywordExtractor:
                 cluster_stats[cluster_id]["hit_count"] += 1
                 cluster_stats[cluster_id]["total_similarity"] += sim_score
 
-        # 2. RANKING: Compute a combined score (Volume × Confidence)
+        # RANKING: Compute a combined score (Volume × Confidence)
         unique_labels, counts = np.unique(self.cluster_labels, return_counts=True)
         global_cluster_sizes = dict(zip(unique_labels, counts))
 
@@ -170,10 +166,9 @@ class PoemKeywordExtractor:
             score = hit_weight * avg_sim * size_penalty
             ranked_clusters.append((cluster_id, score))
 
-        # Sort descending by score (best clusters first)
         ranked_clusters.sort(key=lambda x: x[1], reverse=True)
 
-        # 3. FILTERING: Keep only the top K neighborhoods (e.g., max 15)
+        # FILTERING: Keep only the top K neighborhoods
         top_clusters = [
             cluster_id for cluster_id, score in ranked_clusters[:max_neighborhoods]
         ]
@@ -182,11 +177,10 @@ class PoemKeywordExtractor:
             f"Filtered down to top {len(top_clusters)} neighborhoods (from {len(cluster_stats)} raw matches)."
         )
 
-        # 4. VECTORIZED EXTRACTION: Pull all master lines belonging to these top clusters instantly
+        # VECTORIZED EXTRACTION: Pull all master lines belonging to these top clusters instantly
         valid_mask = np.isin(self.cluster_labels, top_clusters)
         candidate_indices = np.where(valid_mask)[0]
 
-        # Slice everything cleanly while maintaining 100% index alignment
         filtered_metadata = self.metadata_reader.get_multiple(candidate_indices)
         filtered_cluster_labels = self.cluster_labels[candidate_indices]
 
@@ -203,7 +197,7 @@ class PoemKeywordExtractor:
         word_weight=0.5,
         top_words_to_keep=20,
     ) -> list[dict]:
-        # 1. Collect score vectors and mean similarities for each cluster from the input poem
+        # Collect score vectors and mean similarities for each cluster from the input poem
         cluster_score_lists = defaultdict(list)
         cluster_similarity_lists = defaultdict(list)
 
@@ -219,7 +213,7 @@ class PoemKeywordExtractor:
                 cluster_score_lists[cluster_id].append(scores)
                 cluster_similarity_lists[cluster_id].append(mean_sim)
 
-        # 2. Compute mathematical means for each cluster's profile and semantic baseline
+        # Compute mathematical means for each cluster's profile and semantic baseline
         cluster_emotional_profiles = {}
         for cluster_id, score_list in cluster_score_lists.items():
             cluster_emotional_profiles[cluster_id] = np.mean(score_list, axis=0)
@@ -242,7 +236,7 @@ class PoemKeywordExtractor:
                     cid: 1.0 for cid in cluster_semantic_profiles
                 }
 
-        # 3. Rank lines based on their composite scores
+        # Rank lines based on their composite scores
         best_keywords = {}
 
         for i, line_record in enumerate(filtered_metadata):
@@ -297,12 +291,12 @@ class PoemKeywordExtractor:
                 )
                 word_emotional_closeness = 1.0 / (1.0 + word_emo_distance)
 
-                # 1. Combine them using a weighted average
+                # Combine them using a weighted average
                 combined_emotional_closeness = (
                     word_weight * word_emotional_closeness
                 ) + (line_weight * line_emotional_closeness)
 
-                # 2. Apply global weights
+                # Apply global weights
                 semantic_sim_score = semantic_weight * cluster_semantic_closeness
                 emotional_sim_score = emotional_weight * combined_emotional_closeness
 
@@ -337,7 +331,7 @@ class PoemKeywordExtractor:
         poem_embeddings,
         weights,
     ):
-        # --- 1. Process Input Poem, Generate Neighborhoods ---
+        # --- Process Input Poem, Generate Neighborhoods ---
         poem_clusters_set, poem_metadata = self.process_poem(
             poem_embeddings, k=weights.context_line_amount
         )
@@ -348,14 +342,14 @@ class PoemKeywordExtractor:
         else:
             print(f"{len(poem_clusters_set)} neighborhoods found for this poem.")
 
-        # --- 2. Extract All Lines from K Best Neighborhoods ---
+        # --- Extract All Lines from K Best Neighborhoods ---
         filtered_metadata, filtered_cluster_labels = (
             self.select_lines_from_neighborhoods(
                 poem_metadata, max_neighborhoods=weights.neighborhood_amount
             )
         )
 
-        # --- 3. Extract Words from Lines ---
+        # --- Extract Words from Lines ---
         neighborhood_words = self.extract_words(
             poem_metadata,
             filtered_metadata,
