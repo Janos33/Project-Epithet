@@ -1,4 +1,3 @@
-import json
 import time
 import uuid
 import threading
@@ -18,10 +17,9 @@ print("Initializing engine and loading dataset into memory...")
 extractor = PoemKeywordExtractor()
 print("Engine ready!")
 
-# Use a lock to prevent Thread race conditions in Flask when modifying the queue
 queue_lock = threading.Lock()
 
-# Active queue memory: { ticket_id: { "joined_at": float, "last_seen": float, "status": str } }
+# Queue schema: { ticket_id: { "joined_at": float, "last_seen": float, "status": str } }
 active_queue = {}
 
 
@@ -37,9 +35,7 @@ def clean_stale_tickets():
         for tid, data in active_queue.items():
             time_since_seen = now - data["last_seen"]
 
-            # If waiting and stopped polling for 10s
             is_stale_waiting = data.get("status") == "waiting" and time_since_seen > 10
-            # If processing but hung for more than 300s (5 mins)
             is_stale_processing = (
                 data.get("status") == "processing" and time_since_seen > 300
             )
@@ -74,7 +70,6 @@ def queue_join():
             "last_seen": now,
             "status": "waiting",
         }
-        # Position is simply their index in the dictionary
         position = list(active_queue.keys()).index(ticket_id)
 
     return jsonify({"ticket_id": ticket_id, "position": position})
@@ -89,7 +84,6 @@ def queue_status(ticket_id):
         if ticket_id not in active_queue:
             return jsonify({"status": "expired", "position": -1}), 404
 
-        # Update last seen since they are actively polling
         active_queue[ticket_id]["last_seen"] = now
         position = list(active_queue.keys()).index(ticket_id)
 
@@ -128,7 +122,6 @@ def queue_process():
     results = extractor.extract(poem_embeddings, weights)
     if results is None:
         results = []
-    # -----------------------------------------------------
 
     with queue_lock:
         if ticket_id in active_queue:
