@@ -112,10 +112,10 @@ def queue_process():
     poem_embeddings = data.get("embeddings")
 
     weights = parameters.Weights(
-        emotional_weight=float(data.get("emotional_weight", 50)) / 100,
-        line_weight=float(data.get("line_weight", 50)) / 100,
-        context_line_amount=int(data.get("context_line_amount", 3)),
-        neighborhood_amount=int(data.get("neighborhood_amount", 5)),
+        emotional_weight=float(data.get("emotional_weight", 60)) / 100,
+        line_weight=float(data.get("line_weight", 85)) / 100,
+        context_line_amount=int(data.get("context_line_amount", 1000)),
+        neighborhood_amount=int(data.get("neighborhood_amount", 500)),
         max_results=int(data.get("max_results", 20)),
     )
 
