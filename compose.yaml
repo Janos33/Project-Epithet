@@ -54,8 +54,6 @@ services:
     command: python main.py
     restart: unless-stopped
     network_mode: "host"
-    ports:
-      - "${APP_PORT:-8000}:5000"
     volumes:
       - ./data:/code/data
     develop:
