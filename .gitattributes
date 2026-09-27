@@ -7,5 +7,4 @@
 #   git config merge.ours.driver true
 # Without that, git silently falls back to a normal merge for this file,
 # so don't assume it's protected until you've set that.
-
 compose.yaml merge=ours
