@@ -1,0 +1,11 @@
+# compose.yaml intentionally differs between branches (dev runs Neo4j + the
+# full pipeline + Flask's dev server; main runs only the app, via Gunicorn,
+# with no Neo4j at all). Keep main's version on merge instead of taking
+# dev's.
+#
+# This only takes effect once you've run, locally, one time per clone:
+#   git config merge.ours.driver true
+# Without that, git silently falls back to a normal merge for this file,
+# so don't assume it's protected until you've set that.
+
+compose.yaml merge=ours
