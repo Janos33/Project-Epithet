@@ -85,7 +85,7 @@ def load_profile(name: str) -> ProfileConfig:
         description=data.get("description", ""),
         emotional_anchors_path=config_path / "emotional-anchor.json",
         master_embeddings_path=processed_path / "master_embeddings.npy",
-        metadata_path=processed_path / "metadata.json",
+        metadata_path=processed_path / "metadata.jsonl",
         clustered_data_path=processed_path / "clustered_data.npz",
         embedder_model=shared["embedding"]["model"],
         embedding_dim=shared["embedding"]["dim"],

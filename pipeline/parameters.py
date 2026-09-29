@@ -31,7 +31,7 @@ PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 PROFILE_PATH = CONFIG_DIR / "profile.json"
 RAW_POEMS_PATH = RAW_DATA_DIR / "poems.json"
 MEMMAP_PATH = TEMPORARY_DIR / "raw_embeddings.dat"
-METADATA_PATH = PROCESSED_DIR / "metadata.json"
+METADATA_PATH = PROCESSED_DIR / "metadata.jsonl"
 CLUSTERED_DATA_PATH = PROCESSED_DIR / "clustered_data.npz"
 MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"
 EMOTIONAL_ANCHORS_PATH = CONFIG_DIR / "emotional-anchor.json"
