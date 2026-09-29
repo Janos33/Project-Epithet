@@ -49,42 +49,28 @@ document.addEventListener("DOMContentLoaded", () => {
             card.className = "keyword-card";
 
             const word = item.word !== undefined ? item.word : Array.isArray(item) ? item[0] : item;
+
             const score = item.score !== undefined ? item.score : Array.isArray(item) ? item[1] : 0;
-            const inverseFrequency =
-              item.inverseFrequency !== undefined
-                ? item.inverseFrequency
-                : Array.isArray(item)
-                  ? item[1]
-                  : 0;
+
+            const emotions = [item.mainEmotion, item.secondaryEmotion].filter(Boolean).join(", ");
 
             if (item.color) {
               card.style.setProperty("--card-accent", item.color);
               card.style.backgroundColor = item.color;
             }
 
-            let rarityCategory = "???";
-
-            if (inverseFrequency < 8) {
-              rarityCategory = "Very common";
-            } else if (inverseFrequency < 11) {
-              rarityCategory = "Common";
-            } else if (inverseFrequency < 13) {
-              rarityCategory = "Rare";
-            } else {
-              rarityCategory = "Very rare";
-            }
-
             card.innerHTML = `
-            <h3 class="keyword-text">${word}</h3>
-            <div class="hover-details">
-              <div>
-                <span>${(score * 100).toFixed(2)}% match</span>
-              </div>
-              <div>
-                <span>${rarityCategory} word</span>
-              </div>
+          <h3 class="keyword-text">${word}</h3>
+          <div class="hover-details">
+            <div>
+              <span>${(score * 100).toFixed(2)}% match</span>
             </div>
-          `;
+            <div>
+              <span>${emotions}</span>
+            </div>
+          </div>
+        `;
+
             resultsGrid.appendChild(card);
           });
         } else {

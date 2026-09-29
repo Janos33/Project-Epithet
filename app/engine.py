@@ -82,6 +82,13 @@ class PoemKeywordExtractor:
 
         emotions_dict = EMOTIONAL_ANCHORS.get("emotions", EMOTIONAL_ANCHORS)
 
+        self.emotion_display_names = [
+            details.get("display_name", emotion)
+            if isinstance(details, dict)
+            else emotion
+            for emotion, details in emotions_dict.items()
+        ]
+
         self.line_emotional_embeddings = {}
         self.color_map = {}
 
@@ -299,7 +306,7 @@ class PoemKeywordExtractor:
             # --- Cluster Semantics Closeness ---
             cluster_semantic_closeness = cluster_semantic_profiles.get(cluster_id, 0.0)
 
-            # --- WORD SCORE CALCULATION  ---
+            # --- WORD SCORE CALCULATION ---
 
             for keyword in keywords:
                 word_scores = keyword.get("score")
@@ -308,6 +315,7 @@ class PoemKeywordExtractor:
                 # --- Normalize Word Emotional Scores (Min-Max Scaling to [0, 1]) ---
                 word_min_val = np.min(word_scores_arr)
                 word_max_val = np.max(word_scores_arr)
+
                 if word_max_val > word_min_val:
                     word_scores_arr = (word_scores_arr - word_min_val) / (
                         word_max_val - word_min_val
@@ -333,6 +341,32 @@ class PoemKeywordExtractor:
                 final_score = semantic_sim_score + emotional_sim_score
                 word_text = keyword["word"]
 
+                # --- Determine Primary and Secondary Emotions ---
+
+                # Rank emotions from highest score to lowest score
+                sorted_indices = np.argsort(word_scores_arr)[::-1]
+
+                primary_index = sorted_indices[0]
+                primary_score = word_scores_arr[primary_index]
+                primary_emotion = self.emotion_display_names[primary_index]
+
+                secondary_emotion = None
+
+                # Find the highest-scoring different display name within 20% of primary
+                for secondary_index in sorted_indices[1:]:
+                    secondary_score = word_scores_arr[secondary_index]
+
+                    if secondary_score < primary_score * 0.6:
+                        break
+
+                    candidate_emotion = self.emotion_display_names[secondary_index]
+
+                    if candidate_emotion != primary_emotion:
+                        secondary_emotion = candidate_emotion
+                        break
+
+                # --- Store Best Result for This Keyword ---
+
                 if (
                     word_text not in best_keywords
                     or final_score > best_keywords[word_text]["score"]
@@ -341,7 +375,8 @@ class PoemKeywordExtractor:
                         "word": word_text,
                         "color": keyword["color"],
                         "score": final_score,
-                        "inverseFrequency": keyword["inverseFrequency"],
+                        "mainEmotion": primary_emotion,
+                        "secondaryEmotion": secondary_emotion,
                     }
 
         ranked_keywords = list(best_keywords.values())
