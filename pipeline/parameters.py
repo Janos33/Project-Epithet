@@ -7,26 +7,40 @@ load_dotenv()
 
 # --- Paths ---
 BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
+CURRENT_PROFILE = os.environ.get("PROFILE")
+
+# --- Validation Check ---
+if not CURRENT_PROFILE:
+    raise RuntimeError(
+        "ERROR: 'PROFILE' environment variable is not set.\n"
+        "Please specify a profile when running Docker, e.g.:\n"
+        "docker compose run --rm -e PROFILE=classic build-database"
+    )
 
 RAW_DATA_DIR = BASE_DATA_DIR / "raw"
-SEMI_PROCESSED_DIR = BASE_DATA_DIR / "semi-processed"
-PROCESSED_DIR = BASE_DATA_DIR / "processed"
-CONFIG_PATH = BASE_DATA_DIR / "config"
-MODELS_DIR = BASE_DATA_DIR / "models"
+TEMPORARY_DIR = BASE_DATA_DIR / "temporary"
+PROFILE_DIR = BASE_DATA_DIR / "profiles" / CURRENT_PROFILE
+
+CONFIG_DIR = PROFILE_DIR / "config"
+PROCESSED_DIR = PROFILE_DIR / "processed"
+
+TEMPORARY_DIR.mkdir(parents=True, exist_ok=True)
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- File Paths ---
-PROFILE_PATH = CONFIG_PATH / "profile.json"
+PROFILE_PATH = CONFIG_DIR / "profile.json"
 RAW_POEMS_PATH = RAW_DATA_DIR / "poems.json"
-MEMMAP_PATH = SEMI_PROCESSED_DIR / "raw_embeddings.dat"
+MEMMAP_PATH = TEMPORARY_DIR / "raw_embeddings.dat"
 METADATA_PATH = PROCESSED_DIR / "metadata.json"
 CLUSTERED_DATA_PATH = PROCESSED_DIR / "clustered_data.npz"
 MASTER_EMBEDDINGS_PATH = PROCESSED_DIR / "master_embeddings.npy"
-EMOTIONAL_ANCHORS_PATH = CONFIG_PATH / "emotional-anchor.json"
+EMOTIONAL_ANCHORS_PATH = CONFIG_DIR / "emotional-anchor.json"
 
 # --- Model Artifact Paths ---
-PCA_MODEL_PATH = MODELS_DIR / "pca_model.joblib"
-UMAP_MODEL_PATH = MODELS_DIR / "umap_model.joblib"
-HDBSCAN_MODEL_PATH = MODELS_DIR / "hdbscan_model.joblib"
+PCA_MODEL_PATH = TEMPORARY_DIR / "pca_model.joblib"
+UMAP_MODEL_PATH = TEMPORARY_DIR / "umap_model.joblib"
+HDBSCAN_MODEL_PATH = TEMPORARY_DIR / "hdbscan_model.joblib"
+
 
 # --- Dataset Profile (data/config/profile.json) ---
 # Non-performance settings live in profile.json:

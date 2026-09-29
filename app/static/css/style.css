@@ -586,6 +586,89 @@ button[type="submit"],
   margin-top: 5px;
 }
 
+/* ---------- Profile Selection Blocks ---------- */
+
+#profile-options-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+.profile-option-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  transition: all 0.2s ease;
+  position: relative;
+  /* Prevent text selection when clicking rapidly */
+  user-select: none;
+}
+
+/* Hide the actual radio circle, because the whole card acts as the button */
+.profile-option-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.profile-option-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.profile-option-name {
+  font-weight: bold;
+  font-size: 1.15em;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.profile-option-desc {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Hover State (for mouse users) */
+@media (hover: hover) {
+  .profile-option-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(212, 175, 55, 0.5); /* Faded gold border */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Active/Selected State */
+.profile-option-card.active {
+  background: rgba(212, 175, 55, 0.1); /* Subtle gold tint */
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+}
+
+.profile-option-card.active .profile-option-name {
+  color: var(--accent-gold);
+}
+
+/* Focus state for keyboard accessibility */
+.profile-option-card input[type="radio"]:focus-visible ~ .profile-option-details {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 /* =========================================================
    RESPONSIVE (keep at the end of the file)
    ========================================================= */

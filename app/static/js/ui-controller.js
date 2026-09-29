@@ -15,28 +15,34 @@ window.addEventListener("pageshow", (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Grab window header buttons
+  const profileBtn = document.getElementById("profile-btn");
+  const settingsBtn = document.getElementById("settings-btn");
+
   // ==========================================
   // 1. RESULTS PAGE RENDERING & CLEANUP
   // ==========================================
   const resultsGrid = document.getElementById("keyword-grid");
 
   if (resultsGrid) {
+    // ON RESULTS PAGE: Hide profile & settings buttons
+    if (profileBtn) profileBtn.style.display = "none";
+    if (settingsBtn) settingsBtn.style.display = "none";
+
     const authorSubtitle = document.getElementById("author-subtitle");
     const storedAuthor = sessionStorage.getItem("epithet_author");
     const storedResultsRaw = sessionStorage.getItem("epithet_results");
 
-    // Update Author Subtitle
     if (authorSubtitle && storedAuthor && storedAuthor.trim() !== "") {
       authorSubtitle.textContent = `Epithet of ${storedAuthor}`;
     }
 
-    // Render Cards
     if (storedResultsRaw) {
       try {
         const results = JSON.parse(storedResultsRaw);
 
         if (Array.isArray(results) && results.length > 0) {
-          resultsGrid.innerHTML = ""; // Clear any placeholder
+          resultsGrid.innerHTML = "";
 
           results.forEach((item) => {
             const card = document.createElement("div");
@@ -72,10 +78,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3 class="keyword-text">${word}</h3>
             <div class="hover-details">
               <div>
-              <span>${(score * 100).toFixed(2)}% match</span>
+                <span>${(score * 100).toFixed(2)}% match</span>
               </div>
               <div>
-              <span>${rarityCategory} word</span>
+                <span>${rarityCategory} word</span>
               </div>
             </div>
           `;
@@ -94,13 +100,17 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       resultsGrid.innerHTML = `<p class="empty-state">No data found. Please return home and submit a poem.</p>`;
     }
+  } else {
+    // ON MAIN PAGE: Ensure buttons are visible
+    if (profileBtn) profileBtn.style.display = "";
+    if (settingsBtn) settingsBtn.style.display = "";
   }
 
   // ==========================================
   // 2. TEXT INPUTS: PERSISTENCE
   // ==========================================
   const textInputs = [
-    { id: "author_name", storageKey: "epithet_author_input" }, // Kept distinct from sessionStorage queue data
+    { id: "author_name", storageKey: "epithet_author_input" },
     { id: "poem_text", storageKey: "epithet_poem" }
   ];
 
@@ -108,13 +118,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputEl = document.getElementById(config.id);
     if (!inputEl) return;
 
-    // Restore saved value on page load
     const savedValue = localStorage.getItem(config.storageKey);
     if (savedValue !== null) {
       inputEl.value = savedValue;
     }
 
-    // Save to localStorage whenever user types
     inputEl.addEventListener("input", () => {
       localStorage.setItem(config.storageKey, inputEl.value);
     });
@@ -160,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
       formId: "form-granularity-slider",
       displayId: "line-value-display",
       storageKey: "epithet_find_slider",
-      formatDisplay: (val) => ` ${100 - val}%  individual words, ${val}% similar contexts`
+      formatDisplay: (val) => ` ${100 - val}% individual words, ${val}% similar contexts`
     },
     {
       modalId: "context-slider",
@@ -302,4 +310,77 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupModal(".info-btn", "info-modal", "close-info-modal");
   setupModal(".settings-btn", "settings-modal", "close-settings-modal");
+  setupModal(".profile-btn", "profile-modal", "close-profile-modal");
+
+  // ==========================================
+  // 7. PROFILE SELECTION & SYNC
+  // ==========================================
+  const profileOptionsContainer = document.getElementById("profile-options-list");
+  const hiddenProfileInput = document.getElementById("selected_profile");
+
+  function setSelectedProfile(profileId) {
+    localStorage.setItem("epithet_selected_profile", profileId);
+    if (hiddenProfileInput) {
+      hiddenProfileInput.value = profileId;
+    }
+  }
+
+  async function loadProfiles() {
+    if (!profileOptionsContainer) return;
+
+    try {
+      const response = await fetch("/api/profiles");
+      if (!response.ok) throw new Error("Failed to load profiles");
+
+      const data = await response.json();
+      const profiles = data.profiles || [];
+      const defaultProfile = data.default;
+
+      if (profiles.length === 0) {
+        profileOptionsContainer.innerHTML = `<p class="empty-state">No profiles available.</p>`;
+        return;
+      }
+
+      let activeProfile =
+        localStorage.getItem("epithet_selected_profile") || defaultProfile || profiles[0].id;
+
+      setSelectedProfile(activeProfile);
+
+      profileOptionsContainer.innerHTML = "";
+
+      profiles.forEach((p) => {
+        const isChecked = p.id === activeProfile;
+
+        const card = document.createElement("label");
+        card.className = `profile-option-card ${isChecked ? "active" : ""}`;
+        card.innerHTML = `
+          <input 
+            type="radio" 
+            name="profile_choice" 
+            value="${p.id}" 
+            ${isChecked ? "checked" : ""} 
+          />
+          <div class="profile-option-details">
+            <span class="profile-option-name">${p.name || p.id}</span>
+            ${p.description ? `<p class="profile-option-desc">${p.description}</p>` : ""}
+          </div>
+        `;
+
+        card.querySelector("input").addEventListener("change", (e) => {
+          document
+            .querySelectorAll(".profile-option-card")
+            .forEach((c) => c.classList.remove("active"));
+          card.classList.add("active");
+          setSelectedProfile(e.target.value);
+        });
+
+        profileOptionsContainer.appendChild(card);
+      });
+    } catch (err) {
+      console.error("Error loading profiles:", err);
+      profileOptionsContainer.innerHTML = `<p class="empty-state">Unable to load profiles.</p>`;
+    }
+  }
+
+  loadProfiles();
 });

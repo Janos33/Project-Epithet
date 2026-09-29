@@ -13,9 +13,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Note: ensure that the data here is consistent with the state that app/parameters.py will be once it is run.
-
 from parameters import *
+
+# Define all temporary / non-processed working files
+TEMP_FILES = [
+    MEMMAP_PATH,
+    PCA_MODEL_PATH,
+    UMAP_MODEL_PATH,
+    HDBSCAN_MODEL_PATH,
+]
 
 
 def get_neo4j_driver() -> Driver:
@@ -27,6 +33,7 @@ def get_neo4j_driver() -> Driver:
 
 def extract_data() -> int:
     """Extracts raw embeddings from Neo4j and saves them to disk."""
+    print("\n--- Phase 1: Extracting Data ---")
     print("Connecting to driver...")
     driver = get_neo4j_driver()
 
@@ -129,7 +136,7 @@ def extract_data() -> int:
 
 def train(total_idx: int):
     """Fits PCA, UMAP, and HDBSCAN on a sub-sample of data and saves the models."""
-    print("\n--- Initiating Training Phase ---")
+    print("\n--- Phase 2: Training Models ---")
 
     print(f"Loading raw embeddings from {MASTER_EMBEDDINGS_PATH}...")
     embeddings = np.memmap(
@@ -183,7 +190,7 @@ def train(total_idx: int):
 
     valid_clusters = len(set(clusterer.labels_)) - (1 if -1 in clusterer.labels_ else 0)
     print(
-        f"Training complete. Found {valid_clusters} clusters in the sample. Models saved to {MODELS_DIR}."
+        f"Training complete. Found {valid_clusters} clusters in the sample. Models saved to {TEMPORARY_DIR}."
     )
 
     del embeddings, pca_sample, umap_sample
@@ -191,8 +198,8 @@ def train(total_idx: int):
 
 
 def predict(total_idx: int):
-    """Loads saved models and transforms/predicts clusters for the full dataset in batches."""
-    print("\n--- Initiating Inference/Prediction Phase ---")
+    """Loads saved models, transforms/predicts clusters for full dataset, then deletes models."""
+    print("\n--- Phase 3: Inference/Prediction Phase ---")
 
     print("Loading pre-trained models...")
     pca = joblib.load(PCA_MODEL_PATH)
@@ -207,7 +214,6 @@ def predict(total_idx: int):
         shape=(total_idx, EMBEDDING_DIM),
     )
 
-    # Pre-allocate output arrays
     umap_coords = np.empty((total_idx, UMAP_parameters.n_components), dtype="float32")
     cluster_labels = np.empty(total_idx, dtype="int32")
 
@@ -216,7 +222,6 @@ def predict(total_idx: int):
     for i in range(0, total_idx, batch_size):
         end_idx = min(i + batch_size, total_idx)
 
-        # Sequentially pass batch through the pipeline
         batch_pca = pca.transform(embeddings[i:end_idx])
         batch_umap = reducer.transform(batch_pca)
         batch_labels, _ = hdbscan.approximate_predict(clusterer, batch_umap)
@@ -231,40 +236,31 @@ def predict(total_idx: int):
         CLUSTERED_DATA_PATH, coords=umap_coords, cluster_labels=cluster_labels
     )
 
-    del embeddings, umap_coords, cluster_labels
+    # 1. Unload memory references so OS unlocks the model files
+    del embeddings, umap_coords, cluster_labels, pca, reducer, clusterer
     gc.collect()
+
+    # 2. Deletion point: Models stop being used right here
+    print("Deleting temporary model files...")
+    PCA_MODEL_PATH.unlink(missing_ok=True)
+    UMAP_MODEL_PATH.unlink(missing_ok=True)
+    HDBSCAN_MODEL_PATH.unlink(missing_ok=True)
+
     print("Prediction phase complete!")
 
 
 def main():
-    RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    SEMI_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    # --- Pre-run Cleanup ---
+    # Delete all non-processed temporary files before starting execution
+    for file_path in TEMP_FILES:
+        file_path.unlink(missing_ok=True)
+
+    TEMPORARY_DIR.mkdir(parents=True, exist_ok=True)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Phase 1: Extract
-    if not MASTER_EMBEDDINGS_PATH.is_file() or not METADATA_PATH.is_file():
-        total_idx = extract_data()
-    else:
-        print("Data already extracted, skipping extraction step.")
-        # Calculate size mathematically based on bytes to avoid querying DB again
-        file_size = MASTER_EMBEDDINGS_PATH.stat().st_size
-        total_idx = file_size // (EMBEDDING_DIM * 4)  # float32 = 4 bytes
-
-    # Phase 2: Train Models
-    models_exist = all(
-        p.is_file() for p in [PCA_MODEL_PATH, UMAP_MODEL_PATH, HDBSCAN_MODEL_PATH]
-    )
-    if not models_exist:
-        train(total_idx)
-    else:
-        print("Models already trained, skipping training step.")
-
-    # Phase 3: Predict Data
-    if not CLUSTERED_DATA_PATH.is_file():
-        predict(total_idx)
-    else:
-        print("Data already clustered and predicted, skipping prediction step.")
+    total_idx = extract_data()
+    train(total_idx)
+    predict(total_idx)
 
     print("\nDataset pipeline execution complete!")
 
