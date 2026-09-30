@@ -42,12 +42,12 @@ UMAP_MODEL_PATH = TEMPORARY_DIR / "umap_model.joblib"
 HDBSCAN_MODEL_PATH = TEMPORARY_DIR / "hdbscan_model.joblib"
 
 
-# --- Dataset Profile (data/config/profile.json) ---
-# Non-performance settings live in profile.json:
-#   "shared"        - read by both the pipeline and the app; must match the built dataset
-#   "pipeline_only" - only used here, when building the dataset
+# --- Dataset Profile (data/profiles/<PROFILE>/config/profile.json) ---
+# "embedding", "chunking", and "line_scoring" are also read by the app and
+# must match the built dataset. Everything else in the file is read only
+# here, when building the dataset.
 # Performance settings (batch sizes, cache sizes, job counts) stay in this file.
-_SUPPORTED_SCHEMA_VERSION = 1
+_SUPPORTED_SCHEMA_VERSION = 2
 
 
 def _load_profile(path: Path) -> dict:
@@ -66,45 +66,41 @@ def _load_profile(path: Path) -> dict:
 
 
 _profile = _load_profile(PROFILE_PATH)
-_shared = _profile["shared"]
-_pipeline = _profile["pipeline_only"]
 
-# --- Shared with the app (profile.json -> "shared") ---
-EMBEDDER_MODEL = _shared["embedding"]["model"]
-EMBEDDING_DIM = _shared["embedding"]["dim"]
+# --- Also read by the app (profile.json -> "embedding" / "chunking" / "line_scoring") ---
+EMBEDDER_MODEL = _profile["embedding"]["model"]
+EMBEDDING_DIM = _profile["embedding"]["dim"]
 
-LINE_LENGTH_THRESHOLD = _shared["chunking"]["line_length_threshold"]
-MAX_LINE_LENGTH = _shared["chunking"]["max_line_length"]
+LINE_LENGTH_THRESHOLD = _profile["chunking"]["line_length_threshold"]
+MAX_LINE_LENGTH = _profile["chunking"]["max_line_length"]
 
-LINE_EMOTION_ATTENUATION_THRESHOLD = _shared["line_scoring"][
+LINE_EMOTION_ATTENUATION_THRESHOLD = _profile["line_scoring"][
     "emotion_attenuation_threshold"
 ]
-LINE_ATTENUATION_FACTOR = _shared["line_scoring"]["attenuation_factor"]
-LINE_EXCLUDE_ATTENUATION_FACTOR = _shared["line_scoring"]["exclude_attenuation_factor"]
+LINE_ATTENUATION_FACTOR = _profile["line_scoring"]["attenuation_factor"]
+LINE_EXCLUDE_ATTENUATION_FACTOR = _profile["line_scoring"]["exclude_attenuation_factor"]
 
-# --- Pipeline only (profile.json -> "pipeline_only") ---
-SPACY_MODEL = _pipeline["spacy_model"]
+# --- Pipeline only (everything else in profile.json) ---
+SPACY_MODEL = _profile["spacy_model"]
 
-POEMS_TO_PROCESS = _pipeline["poems_to_process"]  # 0 processes all poems
+POEMS_TO_PROCESS = _profile["poems_to_process"]  # 0 processes all poems
 
-LINE_EMOTION_THRESHOLD = _pipeline["line_filter"]["emotion_threshold"]
+LINE_EMOTION_THRESHOLD = _profile["line_filter"]["emotion_threshold"]
 
-WORD_EMOTION_THRESHOLD = _pipeline["word_scoring"]["emotion_threshold"]
-WORD_EMOTION_ATTENUATION_THRESHOLD = _pipeline["word_scoring"][
+WORD_EMOTION_THRESHOLD = _profile["word_scoring"]["emotion_threshold"]
+WORD_EMOTION_ATTENUATION_THRESHOLD = _profile["word_scoring"][
     "emotion_attenuation_threshold"
 ]
-WORD_ATTENUATION_FACTOR = _pipeline["word_scoring"]["attenuation_factor"]
-WORD_EXCLUDE_ATTENUATION_FACTOR = _pipeline["word_scoring"][
-    "exclude_attenuation_factor"
-]
+WORD_ATTENUATION_FACTOR = _profile["word_scoring"]["attenuation_factor"]
+WORD_EXCLUDE_ATTENUATION_FACTOR = _profile["word_scoring"]["exclude_attenuation_factor"]
 
-OVERALL_SCORE_THRESHOLD = _pipeline["overall_score_threshold"]
-WORD_DELETE_THRESHOLD = _pipeline["word_delete_threshold"]
+OVERALL_SCORE_THRESHOLD = _profile["overall_score_threshold"]
+WORD_DELETE_THRESHOLD = _profile["word_delete_threshold"]
 
-COLOR_AMOUNT = _pipeline["word_color_scoring"]["color_amount"]
-COLOR_ATTENUATION_FACTOR = _pipeline["word_color_scoring"]["color_attenuation_factor"]
+COLOR_AMOUNT = _profile["word_color_scoring"]["color_amount"]
+COLOR_ATTENUATION_FACTOR = _profile["word_color_scoring"]["color_attenuation_factor"]
 
-_clustering = _pipeline["clustering"]
+_clustering = _profile["clustering"]
 
 # --- Performance settings (stay in code) ---
 WRITE_BATCH_SIZE = 2000

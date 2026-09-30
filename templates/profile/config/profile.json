@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "name": "Default",
+  "description": "A simple, rather lightweight profile that shows you the emotions within your work.",
+
+  "embedding": {
+    "model": "all-MiniLM-L6-v2",
+    "dim": 384
+  },
+  "chunking": {
+    "line_length_threshold": 15,
+    "max_line_length": 250
+  },
+  "line_scoring": {
+    "emotion_attenuation_threshold": 0.35,
+    "attenuation_factor": 0.1,
+    "exclude_attenuation_factor": 0.5
+  },
+
+  "poems_to_process": 0,
+  "spacy_model": "en_core_web_sm",
+  "line_filter": {
+    "emotion_threshold": 0.25
+  },
+  "word_scoring": {
+    "emotion_threshold": 0.2,
+    "emotion_attenuation_threshold": 0.4,
+    "attenuation_factor": 0.3,
+    "exclude_attenuation_factor": 0.5
+  },
+  "word_color_scoring": {
+    "color_amount": 3,
+    "color_attenuation_factor": 1.3
+  },
+  "overall_score_threshold": 0.4,
+  "word_delete_threshold": 10,
+  "clustering": {
+    "pca": {
+      "n_components": 50
+    },
+    "umap": {
+      "n_components": 5,
+      "n_neighbors": 10,
+      "min_dist": 0.0,
+      "metric": "cosine",
+      "init": "spectral"
+    },
+    "hdbscan": {
+      "min_cluster_size": 20,
+      "min_samples": 5,
+      "metric": "euclidean"
+    }
+  }
+}

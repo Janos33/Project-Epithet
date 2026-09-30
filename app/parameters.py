@@ -11,7 +11,7 @@ from dataclasses import dataclass
 BASE_DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 PROFILES_DIR = BASE_DATA_DIR / "profiles"
 
-_SUPPORTED_SCHEMA_VERSION = 1
+_SUPPORTED_SCHEMA_VERSION = 2
 
 
 def list_profiles() -> list[str]:
@@ -36,7 +36,7 @@ class ProfileConfig:
     metadata_path: Path
     clustered_data_path: Path
 
-    # --- Parameters (profile.json -> "shared") ---
+    # --- Parameters (profile.json -> "embedding" / "line_scoring") ---
     # embedder_model / embedding_dim   - Model the dataset was built with, and its vector size.
     # line_emotion_attenuation_threshold - Line emotion scores below this are weakened.
     # line_attenuation_factor          - Multiplier applied to those weak scores.
@@ -52,11 +52,12 @@ def load_profile(name: str) -> ProfileConfig:
     """
     Load one profile's config from data/profiles/<name>/config/profile.json.
 
-    Only the "shared" section is used here -- "pipeline_only" values are for
-    the pipeline and are ignored by the app. Raises FileNotFoundError,
-    ValueError, or KeyError on a missing, mismatched, or malformed profile,
-    so a broken profile fails loudly at load time instead of serving quietly
-    wrong results later.
+    Only reads "embedding" and "line_scoring" -- the rest of the file (chunking,
+    word scoring, clustering settings, etc.) is for the pipeline, when building
+    the dataset, and is ignored here. Raises FileNotFoundError, ValueError, or
+    KeyError on a missing, mismatched, or malformed profile, so a broken
+    profile fails loudly at load time instead of serving quietly wrong
+    results later.
     """
     profile_dir = PROFILES_DIR / name
     config_path = profile_dir / "config"
@@ -76,8 +77,7 @@ def load_profile(name: str) -> ProfileConfig:
             f"expected {_SUPPORTED_SCHEMA_VERSION}"
         )
 
-    shared = data["shared"]
-    line_scoring = shared["line_scoring"]
+    line_scoring = data["line_scoring"]
 
     return ProfileConfig(
         name=name,
@@ -87,8 +87,8 @@ def load_profile(name: str) -> ProfileConfig:
         master_embeddings_path=processed_path / "master_embeddings.npy",
         metadata_path=processed_path / "metadata.jsonl",
         clustered_data_path=processed_path / "clustered_data.npz",
-        embedder_model=shared["embedding"]["model"],
-        embedding_dim=shared["embedding"]["dim"],
+        embedder_model=data["embedding"]["model"],
+        embedding_dim=data["embedding"]["dim"],
         line_emotion_attenuation_threshold=line_scoring[
             "emotion_attenuation_threshold"
         ],
