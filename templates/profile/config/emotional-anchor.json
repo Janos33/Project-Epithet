@@ -1,0 +1,118 @@
+{
+  "emotions": {
+    "Joy": {
+      "display_name": "Joy",
+      "color": "#FFD166",
+      "words": ["joyful", "cheerful", "delighted", "jubilant", "gleeful", "blissful"],
+      "lines": [
+        "Laughter spread through the meadow as friends celebrated a long-awaited reunion.",
+        "A wave of happiness swept through the crowd when the children began dancing."
+      ],
+      "word_excludes": ["gloomy", "morose", "despondent", "miserable"],
+      "line_excludes": ["Faded, forgotten photographs lay scattered across the dusty floor."]
+    },
+    "Serenity": {
+      "display_name": "Serenity",
+      "color": "#42D7C5",
+      "words": ["tranquil", "peaceful", "placid", "composed", "restful", "untroubled"],
+      "lines": [
+        "The lake remained perfectly still while she sat quietly, watching the evening pass.",
+        "She breathed slowly on the porch, feeling completely at ease as the world grew quiet."
+      ],
+      "word_excludes": ["frantic", "hysterical", "chaotic", "turbulent", "monotone"],
+      "line_excludes": ["Crimson embers erupt from the roaring inferno."]
+    },
+    "Wrath": {
+      "display_name": "Wrath",
+      "color": "#E63946",
+      "words": ["furious", "enraged", "livid", "irate", "outraged", "seething"],
+      "lines": [
+        "Fury surged through him as he clenched his fists and shouted at the shattered door.",
+        "The insult ignited his anger, and he slammed his hand against the table."
+      ],
+      "word_excludes": ["gentle", "compassionate", "tender", "forgiving"],
+      "line_excludes": ["Exhale slowly, letting a wave of calm wash over your quiet mind."]
+    },
+    "Grief": {
+      "display_name": "Grief",
+      "color": "#5F42A8",
+      "words": ["grieving", "mournful", "sorrowful", "heartbroken", "bereft", "inconsolable"],
+      "lines": [
+        "Heavy with sorrow, she stood beside the grave and struggled to accept the loss.",
+        "After the funeral, the empty chair remained, painfully reminding him that she was gone."
+      ],
+      "word_excludes": ["jubilant", "lively", "gleeful", "celebratory"],
+      "line_excludes": ["Golden rays of morning sun dance through the vibrant meadow."]
+    },
+    "Dread": {
+      "display_name": "Dread",
+      "color": "#8B42D7",
+      "words": ["fearful", "apprehensive", "terrified", "anxious", "uneasy", "foreboding"],
+      "lines": [
+        "The warning said the storm would reach the village before dawn, and every minute brought it closer.",
+        "She heard the alarm in the distance and realized that something dangerous was approaching."
+      ],
+      "word_excludes": ["carefree", "reassured", "untroubled", "relaxed"],
+      "line_excludes": ["A million glittering galaxies spiral endlessly through the vast cosmos."]
+    },
+    "Wonder": {
+      "display_name": "Wonder",
+      "color": "#427DD7",
+      "words": ["awestruck", "spellbound", "mesmerized", "enthralled", "enchanted", "captivated"],
+      "lines": [
+        "He gazed upward, captivated by the enormous sky and the countless stars stretching beyond it.",
+        "She stood before the ancient structure, awestruck by its impossible scale and intricate detail."
+      ],
+      "word_excludes": ["mundane", "ordinary", "unremarkable", "indifferent"],
+      "line_excludes": ["Grey dust settled over the empty waiting room."]
+    },
+    "Disgust": {
+      "display_name": "Disgust",
+      "color": "#42D77D",
+      "words": ["disgusted", "repulsed", "nauseated", "revolted", "sickened", "repelled"],
+      "lines": [
+        "A foul stench rose from the rotting refuse, making everyone recoil in disgust.",
+        "She recoiled from the spoiled food, nauseated by its rancid smell."
+      ],
+      "word_excludes": ["fragrant", "appetizing", "pleasant", "pristine"],
+      "line_excludes": ["Whisk the golden honey and cream until perfectly light and sweet."]
+    },
+    "Boredom": {
+      "display_name": "Boredom",
+      "color": "#A8D742",
+      "words": ["bored", "listless", "apathetic", "uninterested", "disengaged", "unenthusiastic"],
+      "lines": [
+        "The endless meeting dragged on while he stared at the clock, wishing it would finally end.",
+        "She reread the same page without interest as the afternoon seemed to stretch forever."
+      ],
+      "word_excludes": ["thrilling", "electrifying", "exciting", "absorbing"],
+      "line_excludes": ["Crimson embers erupt from the roaring inferno."]
+    },
+    "Pride": {
+      "display_name": "Pride",
+      "color": "#D7429B",
+      "words": ["proud", "accomplished", "triumphant", "self-assured", "dignified", "honored"],
+      "lines": [
+        "He stood proudly beside his finished work, satisfied by everything he had achieved.",
+        "The champion raised the trophy, deeply proud of the years of effort that had led to victory."
+      ],
+      "word_excludes": ["humble", "modest", "meek", "submissive"],
+      "line_excludes": [
+        "Heavy, withered leaves fall slowly onto the cold, unforgiving marble tombs."
+      ]
+    },
+    "Surprise": {
+      "display_name": "Surprise",
+      "color": "#D79B42",
+      "words": ["surprised", "startled", "shocked", "stunned", "flabbergasted", "dumbfounded"],
+      "lines": [
+        "A sudden flash of lightning struck without warning, making everyone jump.",
+        "The door burst open unexpectedly, and the entire room fell silent."
+      ],
+      "word_excludes": ["predictable", "expected", "routine", "familiar"],
+      "line_excludes": [
+        "The monotonous, rhythmic ticking of the grandfather clock echoes endlessly."
+      ]
+    }
+  }
+}

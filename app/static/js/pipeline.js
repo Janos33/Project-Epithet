@@ -175,8 +175,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const processedPoemText = formatPoemText(poemText);
         const poemEmbeddings = await engine.processPoem(processedPoemText);
 
-        // FIXED: Matched these IDs to your hidden input HTML IDs
+        // Get the chosen profile ID
+        const selectedProfile =
+          document.getElementById("selected_profile")?.value ||
+          localStorage.getItem("epithet_selected_profile");
+
         const payload = {
+          profile: selectedProfile,
           embeddings: poemEmbeddings,
           emotional_weight: document.getElementById("form-closeness-slider")?.value || 60,
           line_weight: document.getElementById("form-granularity-slider")?.value || 85,

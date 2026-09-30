@@ -223,7 +223,10 @@ class PoetryGraphPipeline:
         return keyword_classifications
 
     def get_blended_color(
-        self, scores: list, top_k: int = 4, power: float = 1.5
+        self,
+        scores: list,
+        top_k: int = COLOR_AMOUNT,
+        power: float = COLOR_ATTENUATION_FACTOR,
     ) -> str:
         # Takes the top scoring emotions and mixes their hex colors based on their relative strength
         scores = np.array(scores, dtype=float)
@@ -294,6 +297,10 @@ class PoetryGraphPipeline:
         print("Loading dataset from disk...")
         with open(RAW_POEMS_PATH, "r", encoding="utf-8") as f:
             des_data = json.load(f)
+
+        if POEMS_TO_PROCESS != 0:
+            print(f"Limiting input data to {POEMS_TO_PROCESS} poems...")
+            des_data = des_data[:POEMS_TO_PROCESS]
 
         print("Processing and inserting data into Neo4j...")
         for poem in des_data:
