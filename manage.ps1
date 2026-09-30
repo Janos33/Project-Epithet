@@ -406,7 +406,7 @@ function Add-NewProfile {
         [string]$Name
     )
 
-    $templatePath = Join-Path $PSScriptRoot "template\profile"
+    $templatePath = Join-Path $PSScriptRoot "templates\profile"
     $profilesPath = Join-Path $PSScriptRoot "data\profiles"
     $newProfilePath = Join-Path $profilesPath $Name
 
