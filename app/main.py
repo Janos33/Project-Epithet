@@ -1,59 +1,64 @@
 import os
 import time
 import uuid
+import logging
 import threading
 from flask import Flask, jsonify, render_template, request
 from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
 
 from engine import PoemKeywordExtractor
 from parameters import Weights, list_profiles, load_profile
 
-load_dotenv()
+load_dotenv(override=True)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 app.config["MAX_FORM_MEMORY_SIZE"] = 8 * 1024 * 1024  # 8 MB
 
 # --- Load one extractor per active profile ---
-# PROFILES: comma-separated profile names to offer, e.g. "classic,modern".
-# A name that isn't found under data/profiles/, or that fails to load (bad
-# JSON, mismatched dataset files, etc.), is skipped with a warning rather
-# than blocking startup -- one bad profile shouldn't take the whole site
-# down. If none load at all, the app refuses to start rather than serve
-# nothing.
 _configured_profiles = [
-    name.strip() for name in os.getenv("PROFILES", "default").split(",") if name.strip()
+    name.strip() for name in os.getenv("PROFILES", "Default").split(",") if name.strip()
 ]
 _available_profiles = set(list_profiles())
 
 for name in _configured_profiles:
     if name not in _available_profiles:
-        print(
-            f"Profile '{name}' is configured but not found under data/profiles/ -- skipping."
+        logger.warning(
+            "Profile '%s' is configured but not found under data/profiles/ -- skipping.",
+            name,
         )
 
 print("Initializing engine and loading dataset(s) into memory...")
 
 extractors: dict[str, PoemKeywordExtractor] = {}
 profile_info: dict[str, dict] = {}
+_embedders_by_model: dict[str, SentenceTransformer] = {}
 
 for name in _configured_profiles:
     if name not in _available_profiles:
         continue
     try:
+        print(f"Attempting to load profile '{name}'.")
         profile = load_profile(name)
-        # Each profile loads its own SentenceTransformer independently, even
-        # when two profiles share a model name -- main.py has no dependency
-        # on sentence_transformers at all; that stays inside engine.py.
-        extractors[name] = PoemKeywordExtractor(profile)
+
+        embedder = _embedders_by_model.get(profile.embedder_model)
+        if embedder is None:
+            embedder = SentenceTransformer(profile.embedder_model)
+            _embedders_by_model[profile.embedder_model] = embedder
+
+        extractors[name] = PoemKeywordExtractor(profile, embedder=embedder)
         profile_info[name] = {
             "id": name,
             "name": profile.display_name,
             "description": profile.description,
         }
         print(f"Loaded profile '{name}'.")
-    except Exception as exc:
-        print(f"Profile '{name}' failed to load -- skipping. ({exc})")
+    except Exception:
+        logger.exception("Profile '%s' failed to load -- skipping.", name)
 
 if not extractors:
     raise RuntimeError(
@@ -62,33 +67,21 @@ if not extractors:
         f"Found under data/profiles/: {', '.join(sorted(_available_profiles)) or '(none)'}."
     )
 
-# When there's exactly one active profile, requests don't need to name it.
 DEFAULT_PROFILE = next(iter(extractors)) if len(extractors) == 1 else None
 
 print(f"Engine ready! Active profiles: {', '.join(extractors)}")
 
-# Use a lock to prevent Thread race conditions in Flask when modifying the queue
 queue_lock = threading.Lock()
-
-# Active queue memory: { ticket_id: { "joined_at": float, "last_seen": float, "status": str } }
 active_queue = {}
 
 
 def clean_stale_tickets():
-    """
-    Purges tickets inactive for >10 seconds, UNLESS they are actively processing.
-    Also clears stuck processing tickets if they've been running for > 5 minutes (timeout failsafe).
-    """
     now = time.time()
-
     with queue_lock:
         stale_ids = []
         for tid, data in active_queue.items():
             time_since_seen = now - data["last_seen"]
-
-            # If waiting and stopped polling for 10s
             is_stale_waiting = data.get("status") == "waiting" and time_since_seen > 10
-            # If processing but hung for more than 300s (5 mins)
             is_stale_processing = (
                 data.get("status") == "processing" and time_since_seen > 300
             )
@@ -129,7 +122,6 @@ def profiles():
 @app.route("/api/queue/join", methods=["POST"])
 def queue_join():
     clean_stale_tickets()
-
     ticket_id = str(uuid.uuid4())
     now = time.time()
 
@@ -139,7 +131,6 @@ def queue_join():
             "last_seen": now,
             "status": "waiting",
         }
-        # Position is simply their index in the dictionary
         position = list(active_queue.keys()).index(ticket_id)
 
     return jsonify({"ticket_id": ticket_id, "position": position})
@@ -154,12 +145,10 @@ def queue_status(ticket_id):
         if ticket_id not in active_queue:
             return jsonify({"status": "expired", "position": -1}), 404
 
-        # Update last seen since they are actively polling
         active_queue[ticket_id]["last_seen"] = now
         position = list(active_queue.keys()).index(ticket_id)
 
     status = "ready" if position == 0 else "waiting"
-
     return jsonify({"status": status, "position": position})
 
 
@@ -182,18 +171,14 @@ def queue_process():
 
     profile_name = data.get("profile") or DEFAULT_PROFILE
     extractor = extractors.get(profile_name)
-
     if extractor is None:
         _remove_ticket(ticket_id)
-        return (
-            jsonify(
-                {
-                    "error": "Unknown or missing profile",
-                    "available_profiles": list(extractors),
-                }
-            ),
-            400,
-        )
+        return jsonify(
+            {
+                "error": "Unknown or missing profile",
+                "available_profiles": list(extractors),
+            }
+        ), 400
 
     poem_embeddings = data.get("embeddings")
 
@@ -210,7 +195,6 @@ def queue_process():
         results = []
 
     _remove_ticket(ticket_id)
-
     return jsonify(results)
 
 
@@ -220,4 +204,4 @@ def favicon():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000, extra_files=[".env"])
