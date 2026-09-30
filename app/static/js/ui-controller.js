@@ -209,26 +209,47 @@ document.addEventListener("DOMContentLoaded", () => {
     default: {
       emotional_weight: 60,
       theme_weight: 85,
-      context_depth: 500,
-      max_connections: 1000
+      context_depth: 50,
+      max_connections: 100
     },
     literal: {
       emotional_weight: 40,
       theme_weight: 100,
-      context_depth: 100,
-      max_connections: 200
+      context_depth: 10,
+      max_connections: 20
     },
     subtle: {
       emotional_weight: 60,
       theme_weight: 70,
-      context_depth: 750,
-      max_connections: 1500
+      context_depth: 200,
+      max_connections: 400
     },
     feel: {
       emotional_weight: 80,
       theme_weight: 80,
       context_depth: 1000,
       max_connections: 2000
+    },
+    get random() {
+      // Helper function that reads min, max, and step attributes directly from an input element
+      const getRandomFromSlider = (sliderId) => {
+        const slider = document.getElementById(sliderId);
+        if (!slider) return 0;
+
+        const min = Number(slider.min);
+        const max = Number(slider.max);
+        const step = Number(slider.step);
+
+        const steps = Math.floor((max - min) / step);
+        return min + Math.floor(Math.random() * (steps + 1)) * step;
+      };
+
+      return {
+        emotional_weight: getRandomFromSlider("emotional-slider"),
+        theme_weight: getRandomFromSlider("line-slider"),
+        context_depth: getRandomFromSlider("context-slider"),
+        max_connections: getRandomFromSlider("connections-slider")
+      };
     }
   };
 
@@ -238,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click", (e) => {
       e.preventDefault();
 
-      const presetKey = e.target.dataset.preset;
+      const presetKey = e.currentTarget.dataset.preset;
       const config = PRESETS[presetKey];
 
       if (!config) return;
